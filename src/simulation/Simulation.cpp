@@ -967,6 +967,7 @@ void Simulation::clear_sim(void)
 	frameCount = 0;
 	debug_nextToUpdate = 0;
 	debug_mostRecentlyUpdated = -1;
+	debug_interestingChangeOccurred = false;
 	emp_decor = 0;
 	emp_trigger_count = 0;
 	signs.clear();
@@ -2206,6 +2207,8 @@ Simulation::PlanMoveResult Simulation::PlanMove<false, const Simulation>(const S
 
 void Simulation::UpdateParticles(int start, int end)
 {
+	debug_interestingChangeOccurred = false;
+
 	//the main particle loop function, goes over all particles.
 	auto &sd = SimulationData::CRef();
 	auto &elements = sd.elements;
@@ -3895,6 +3898,7 @@ Simulation::Simulation():
 	replaceModeSelected(0),
 	replaceModeFlags(0),
 	debug_nextToUpdate(0),
+	debug_interestingChangeOccurred(false),
 	ISWIRE(0),
 	force_stacking_check(false),
 	emp_decor(0),
@@ -3912,6 +3916,7 @@ Simulation::Simulation():
 	legacy_enable(0),
 	aheat_enable(0),
 	water_equal_test(0),
+	subframe_mode(false),
 	sys_pause(0),
 	framerender(0),
 	pretty_powder(0),

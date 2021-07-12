@@ -758,7 +758,7 @@ void GameView::NotifyUserChanged(GameModel * sender)
 
 void GameView::NotifyPausedChanged(GameModel * sender)
 {
-	pauseButton->SetToggleState(sender->GetPaused());
+	pauseButton->SetToggleState(sender->GetPaused() && !sender->GetSubframeMode());
 }
 
 void GameView::NotifyToolTipChanged(GameModel * sender)
@@ -1381,6 +1381,11 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 		c->ShowConsole();
 		break;
 	case SDL_SCANCODE_SPACE: //Space
+		if (shift && c->GetParticleDebugEnabled())
+		{
+			c->SetSubframeMode();
+			break;
+		}
 		c->SetPaused();
 		break;
 	case SDL_SCANCODE_Z:

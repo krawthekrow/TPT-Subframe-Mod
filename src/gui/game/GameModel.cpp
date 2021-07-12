@@ -1252,6 +1252,7 @@ void GameModel::SetPaused(bool pauseState)
 		Log(logmessage, false);
 	}
 
+	sim->subframe_mode = false;
 	sim->sys_pause = pauseState?1:0;
 	notifyPausedChanged();
 }
@@ -1259,6 +1260,20 @@ void GameModel::SetPaused(bool pauseState)
 bool GameModel::GetPaused()
 {
 	return sim->sys_pause?true:false;
+}
+
+bool GameModel::GetSubframeMode()
+{
+	return sim->subframe_mode;
+}
+
+void GameModel::SetSubframeMode(bool subframeModeState)
+{
+	if (subframeModeState && !GetPaused())
+		SetPaused(true);
+
+	sim->subframe_mode = subframeModeState;
+	notifyPausedChanged();
 }
 
 void GameModel::SetDecoration(bool decorationState)

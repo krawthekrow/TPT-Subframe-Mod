@@ -10,4 +10,5 @@ public:
 	virtual void Draw() {}
 	// currentMouse doesn't belong but I don't want to create more hooks at the moment
 	virtual bool KeyPress(int key, int scan, bool shift, bool ctrl, bool alt, ui::Point currentMouse) { return true; }
+	virtual void Update() {}
 };
