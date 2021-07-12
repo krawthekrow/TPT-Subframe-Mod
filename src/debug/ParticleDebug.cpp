@@ -12,6 +12,23 @@ ParticleDebug::ParticleDebug(unsigned int id, Simulation * sim, GameModel * mode
 
 }
 
+void ParticleDebug::Update()
+{
+	if (!sim->subframe_mode)
+		return;
+
+	int i;
+	do
+	{
+		i = sim->debug_nextToUpdate;
+		while (i < NPART - 1 && !sim->parts[i].type)
+			i++;
+		sim->framerender = 1;
+		model->UpdateUpTo(i + 1);
+	}
+	while(i < NPART - 1 && !sim->debug_interestingChangeOccurred);
+}
+
 void ParticleDebug::Debug(int mode, int x, int y)
 {
 	int i = 0;
@@ -43,6 +60,10 @@ void ParticleDebug::Debug(int mode, int x, int y)
 				i = ID(sim->photons[y][x]);
 			}
 		}
+	}
+	else
+	{
+		printf("BUG: SetDebug called with unknown mode");
 	}
 	sim->framerender = 1;
 	auto prevToUpdate = sim->debug_nextToUpdate;

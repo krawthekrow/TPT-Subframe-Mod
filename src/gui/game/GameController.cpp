@@ -872,10 +872,21 @@ void GameController::Update()
 	if (!sim->sys_pause || sim->framerender)
 	{
 		gameModel->UpdateUpTo(NPART);
+		sim->subframe_mode = false;
 	}
 	else
 	{
 		gameModel->BeforeSim();
+	}
+	if (sim->subframe_mode)
+	{
+		for (auto &debug : debugInfo)
+		{
+			if (debug->debugID & debugFlags)
+			{
+				debug->Update();
+			}
+		}
 	}
 
 	//if either STKM or STK2 isn't out, reset it's selected element. Defaults to PT_DUST unless right selected is something else
@@ -966,6 +977,16 @@ void GameController::SetPaused(bool pauseState)
 void GameController::SetPaused()
 {
 	gameModel->SetPaused(!gameModel->GetPaused());
+}
+
+void GameController::SetSubframeMode(bool subframeModeState)
+{
+	gameModel->SetSubframeMode(subframeModeState);
+}
+
+void GameController::SetSubframeMode()
+{
+	gameModel->SetSubframeMode(!gameModel->GetSubframeMode());
 }
 
 void GameController::SetDecoration(bool decorationState)

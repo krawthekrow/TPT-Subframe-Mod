@@ -50,6 +50,7 @@ public:
 
 	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
+	bool debug_interestingChangeOccurred;
 	int parts_lastActiveIndex;
 	int pfree;
 	int NUM_PARTS;
@@ -100,6 +101,7 @@ public:
 	int legacy_enable;
 	int aheat_enable;
 	int water_equal_test;
+	bool subframe_mode;
 	int sys_pause;
 	int framerender;
 	int pretty_powder;

@@ -114,6 +114,8 @@ public:
 	void Update();
 	void SetPaused(bool pauseState);
 	void SetPaused();
+	void SetSubframeMode(bool subframeModeState);
+	void SetSubframeMode();
 	void SetDecoration(bool decorationState);
 	void SetDecoration();
 	void ShowGravityGrid();
@@ -127,6 +129,7 @@ public:
 	int GetTemperatureScale();
 	int GetEdgeMode();
 	void SetEdgeMode(int edgeMode);
+	bool GetParticleDebugEnabled() { return debugFlags & 0x8; }
 	void SetDebugFlags(unsigned int flags) { debugFlags = flags; }
 	unsigned int GetDebugFlags() const { return debugFlags; }
 	void SetActiveMenu(int menuID);
