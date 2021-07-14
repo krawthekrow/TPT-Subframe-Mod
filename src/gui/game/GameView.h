@@ -76,6 +76,7 @@ private:
 	int recordingIndex;
 	bool recording;
 	int recordingFolder;
+	bool recordingSubframe;
 
 	ui::Point currentPoint, lastPoint;
 	GameController * c;
@@ -166,7 +167,8 @@ public:
 	SelectMode GetSelectMode() { return selectMode; }
 	void BeginStampSelection();
 	ByteString TakeScreenshot(int captureUI, int fileType);
-	int Record(bool record);
+	int Record(bool record, bool subframe = false);
+	bool GetRecordingSubframe(){ return recordingSubframe; }
 
 	//all of these are only here for one debug lines
 	bool GetMouseDown() { return isMouseDown; }

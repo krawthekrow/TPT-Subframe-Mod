@@ -1526,6 +1526,17 @@ void GameController::FrameStep()
 	gameModel->SetPaused(true);
 }
 
+void GameController::SubframeFrameStep()
+{
+	gameModel->SetSubframeFrameStep(1);
+	gameModel->SetSubframeMode(true);
+}
+
+bool GameController::IsSubframeFrameStepComplete()
+{
+	return gameModel->GetSubframeFrameStep() == 0;
+}
+
 void GameController::Vote(int direction)
 {
 	if (gameModel->GetSave() && gameModel->GetUser().UserID && gameModel->GetSave()->GetID())
@@ -1595,9 +1606,9 @@ ByteString GameController::TakeScreenshot(int captureUI, int fileType)
 	return gameView->TakeScreenshot(captureUI, fileType);
 }
 
-int GameController::Record(bool record)
+int GameController::Record(bool record, bool subframe)
 {
-	return gameView->Record(record);
+	return gameView->Record(record, subframe);
 }
 
 void GameController::NotifyAuthUserChanged(Client * sender)

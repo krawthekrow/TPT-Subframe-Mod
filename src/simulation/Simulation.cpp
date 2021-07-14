@@ -3960,6 +3960,15 @@ void Simulation::AfterSim()
 	}
 
 	frameCount += 1;
+
+	if (subframe_framerender)
+	{
+		subframe_framerender--;
+		if (subframe_framerender == 0)
+		{
+			subframe_mode = false;
+		}
+	}
 }
 
 Simulation::~Simulation() = default;
@@ -3989,6 +3998,7 @@ Simulation::Simulation():
 	subframe_mode(false),
 	sys_pause(0),
 	framerender(0),
+	subframe_framerender(0),
 	pretty_powder(0),
 	sandcolour_frame(0),
 	deco_space(DECOSPACE_SRGB)

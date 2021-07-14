@@ -175,6 +175,17 @@ static int record(lua_State *L)
 	return 1;
 }
 
+static int record_subframe(lua_State *L)
+{
+	if (!lua_isboolean(L, -1))
+		return luaL_typerror(L, 1, lua_typename(L, LUA_TBOOLEAN));
+	bool record = lua_toboolean(L, -1);
+	auto *lsi = GetLSI();
+	int recordingFolder = lsi->gameController->Record(record, true);
+	lua_pushinteger(L, recordingFolder);
+	return 1;
+}
+
 static int compatChunk(lua_State *L)
 {
 	lua_pushlstring(L, reinterpret_cast<const char *>(compat_lua), compat_lua_size);
@@ -256,6 +267,7 @@ void LuaMisc::Open(lua_State *L)
 		LFUNC(installScriptManager),
 		LFUNC(screenshot),
 		LFUNC(record),
+		LFUNC(record_subframe),
 		LFUNC(debug),
 		LFUNC(fpsCap),
 		LFUNC(drawCap),
