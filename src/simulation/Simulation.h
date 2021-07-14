@@ -107,6 +107,7 @@ public:
 	bool subframe_mode;
 	int sys_pause;
 	int framerender;
+	int subframe_framerender;
 	int pretty_powder;
 	int sandcolour;
 	int sandcolour_interface;

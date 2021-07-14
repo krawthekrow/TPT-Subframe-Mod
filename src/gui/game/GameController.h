@@ -172,6 +172,8 @@ public:
 	void ShowConsole();
 	void HideConsole();
 	void FrameStep();
+	void SubframeFrameStep();
+	bool IsSubframeFrameStepComplete();
 	void TransformPlaceSave(Mat2<int> transform, Vec2<int> nudge);
 	bool MouseInZoom(ui::Point position);
 	ui::Point PointTranslate(ui::Point point);
@@ -182,7 +184,7 @@ public:
 	bool IsValidElement(int type);
 	String WallName(int type);
 	ByteString TakeScreenshot(int captureUI, int fileType);
-	int Record(bool record);
+	int Record(bool record, bool subframe = false);
 
 	void ResetAir();
 	void ResetSpark();

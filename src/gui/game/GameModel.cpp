@@ -1354,6 +1354,16 @@ void GameModel::FrameStep(int frames)
 	sim->framerender += frames;
 }
 
+void GameModel::SetSubframeFrameStep(int frames)
+{
+	sim->subframe_framerender = frames;
+}
+
+int GameModel::GetSubframeFrameStep()
+{
+	return sim->subframe_framerender;
+}
+
 void GameModel::ClearSimulation()
 {
 	//Load defaults
