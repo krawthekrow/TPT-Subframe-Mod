@@ -1596,6 +1596,13 @@ static int temperatureScale(lua_State *L)
 	return 0;
 }
 
+static int reloadParticleOrder(lua_State *L)
+{
+	auto *lsi = GetLSI();
+	lsi->gameModel->ReloadParticleOrder();
+	return 0;
+}
+
 static int signsIndex(lua_State *L)
 {
 	ByteString key = tpt_lua_checkByteString(L, 2);
@@ -1908,6 +1915,7 @@ void LuaSimulation::Open(lua_State *L)
 		LFUNC(lastUpdatedID),
 		LFUNC(updateUpTo),
 		LFUNC(temperatureScale),
+		LFUNC(reloadParticleOrder),
 		LFUNC(randomSeed),
 		LFUNC(hash),
 		LFUNC(ensureDeterminism),
