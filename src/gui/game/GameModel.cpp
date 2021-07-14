@@ -1248,7 +1248,7 @@ void GameModel::SetPaused(bool pauseState)
 	if (!pauseState && sim->debug_nextToUpdate > 0)
 	{
 		String logmessage = String::Build("Updated particles from #", sim->debug_nextToUpdate, " to end due to unpause");
-		UpdateUpTo(NPART);
+		sim->CompleteDebugUpdateParticles();
 		Log(logmessage, false);
 	}
 
@@ -1382,6 +1382,11 @@ void GameModel::ClearSimulation()
 
 	notifySaveChanged();
 	UpdateQuickOptions();
+}
+
+void GameModel::ReloadParticleOrder()
+{
+	sim->ReloadParticleOrder();
 }
 
 void GameModel::SetPlaceSave(std::unique_ptr<GameSave> save)
@@ -1719,24 +1724,7 @@ bool GameModel::RemoveCustomGOLType(const ByteString &identifier)
 
 void GameModel::UpdateUpTo(int upTo)
 {
-	if (upTo < sim->debug_nextToUpdate)
-	{
-		upTo = NPART;
-	}
-	if (sim->debug_nextToUpdate == 0)
-	{
-		BeforeSim();
-	}
-	sim->UpdateParticles(sim->debug_nextToUpdate, upTo);
-	if (upTo < NPART)
-	{
-		sim->debug_nextToUpdate = upTo;
-	}
-	else
-	{
-		AfterSim();
-		sim->debug_nextToUpdate = 0;
-	}
+	sim->UpdateUpTo(upTo);
 }
 
 void GameModel::BeforeSim()

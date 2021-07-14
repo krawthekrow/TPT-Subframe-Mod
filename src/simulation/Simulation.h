@@ -14,6 +14,7 @@
 #include <cstring>
 #include <cstddef>
 #include <vector>
+#include <map>
 #include <array>
 #include <memory>
 #include <optional>
@@ -45,6 +46,9 @@ public:
 	int currentTick;
 	int replaceModeSelected;
 	int replaceModeFlags;
+
+	// scratch space for stack reordering hacks
+	Particle stackReorderParts[NPART];
 
 	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
@@ -161,9 +165,13 @@ public:
 	int is_wire_off(int x, int y);
 	void set_emap(int x, int y);
 	int parts_avg(int ci, int ni, int t);
+	void CompleteDebugUpdateParticles();
+	void UpdateUpTo(int upTo);
 	void UpdateParticles(int start, int end); // Dispatches an update to the range [start, end).
 	void SimulateGoL();
 	void RecalcFreeParticles(bool do_life_dec);
+	void FixSoapLinks(std::map<unsigned int, unsigned int> &soapList);
+	void ReloadParticleOrder();
 	void CheckStacking();
 	void BeforeSim();
 	void AfterSim();

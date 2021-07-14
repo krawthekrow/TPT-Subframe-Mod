@@ -225,6 +225,7 @@ public:
 	void ShowGravityGrid(bool showGrid);
 	bool GetGravityGrid();
 	void ClearSimulation();
+	void ReloadParticleOrder();
 	std::vector<Menu*> GetMenuList();
 	std::vector<QuickOption*> GetQuickOptions();
 	void SetActiveMenu(int menuID);

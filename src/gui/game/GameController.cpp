@@ -1586,6 +1586,14 @@ void GameController::ReloadSim()
 	}
 }
 
+void GameController::ReloadParticleOrder()
+{
+	gameModel->ReloadParticleOrder();
+
+	String logmessage = String::Build("Particle order reloaded");
+	gameModel->Log(logmessage, false);
+}
+
 bool GameController::IsValidElement(int type)
 {
 	auto &sd = SimulationData::CRef();
