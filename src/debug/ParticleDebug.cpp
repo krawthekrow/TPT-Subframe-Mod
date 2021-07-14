@@ -110,7 +110,7 @@ bool ParticleDebug::KeyPress(int key, int scan, bool shift, bool ctrl, bool alt,
 			if (sim->debug_nextToUpdate > 0)
 			{
 				String logmessage = String::Build("Updated particles from #", sim->debug_nextToUpdate, " to end due to frame step");
-				model->UpdateUpTo(NPART);
+				sim->CompleteDebugUpdateParticles();
 				model->Log(logmessage, false);
 			}
 			else

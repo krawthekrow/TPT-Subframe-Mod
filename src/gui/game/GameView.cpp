@@ -1438,6 +1438,11 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 		SetDebugHUD(!GetDebugHUD());
 		break;
 	case SDL_SCANCODE_F5:
+		if (shift)
+		{
+			c->ReloadParticleOrder();
+			break;
+		}
 		c->ReloadSim();
 		break;
 	case SDL_SCANCODE_A:
