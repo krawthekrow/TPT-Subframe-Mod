@@ -44,7 +44,7 @@ namespace ui
 		inline bool Running() { return running_; }
 		inline long unsigned int LastTick() { return lastTick; }
 		void Exit();
-		void ConfirmExit();
+		void ConfirmExit(bool warnUnsavedChanges = false);
 
 		void SetDrawingFrequencyLimit(int limit) {drawingFrequencyLimit = limit;}
 		inline int GetDrawingFrequencyLimit() {return drawingFrequencyLimit;}

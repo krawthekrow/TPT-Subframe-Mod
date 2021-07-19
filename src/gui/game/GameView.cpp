@@ -235,10 +235,24 @@ GameView::GameView():
 	currentX+=18;
 	searchButton->SetTogglable(false);
 	searchButton->SetActionCallback({ [this] {
-		if (CtrlBehaviour())
-			c->OpenLocalBrowse();
-		else
-			c->OpenSearch("");
+		bool isLocal = CtrlBehaviour();
+		auto afterCheckUnsavedChanges = [this, isLocal] {
+			if (isLocal)
+				c->OpenLocalBrowse();
+			else
+				c->OpenSearch("");
+		};
+		if (!this->c->GetHasUnsavedChanges()) {
+			afterCheckUnsavedChanges();
+			return;
+		}
+		new ConfirmPrompt(
+			"WARNING: You have unsaved changes",
+			"Are you sure you want to continue?",
+			{ [afterCheckUnsavedChanges] {
+				afterCheckUnsavedChanges();
+			} }
+		);
 	} });
 	AddComponent(searchButton);
 
@@ -1210,6 +1224,7 @@ void GameView::OnMouseDown(int x, int y, unsigned button)
 
 			isMouseDown = true;
 			c->HistorySnapshot();
+			c->SetWasModified(true);
 			if (drawMode == DrawRect || drawMode == DrawLine)
 			{
 				drawPoint1 = c->PointTranslate(currentMouse);
@@ -1593,7 +1608,7 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 	case SDL_SCANCODE_Q:
 		if (ALLOW_QUIT)
 		{
-			ui::Engine::Ref().ConfirmExit();
+			ui::Engine::Ref().ConfirmExit(c->GetHasUnsavedChanges());
 		}
 		break;
 	case SDL_SCANCODE_U:

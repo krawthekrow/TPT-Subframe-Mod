@@ -240,6 +240,7 @@ void GameController::PlaceSave(ui::Point position)
 	if (placeSave)
 	{
 		HistorySnapshot();
+		SetWasModified(true);
 		gameModel->GetSimulation()->needReloadParticleOrder = true;
 		gameModel->GetSimulation()->Load(placeSave, !gameView->ShiftBehaviour(), position);
 		gameModel->SetPaused(placeSave->paused | gameModel->GetPaused());
@@ -957,6 +958,16 @@ void GameController::SetZoomEnabled(bool zoomEnabled)
 void GameController::SetToolStrength(float value)
 {
 	gameModel->SetToolStrength(value);
+}
+
+bool GameController::GetHasUnsavedChanges()
+{
+	return gameModel->GetSaveFile() && gameModel->GetWasModified();
+}
+
+void GameController::SetWasModified(bool value)
+{
+	gameModel->SetWasModified(value);
 }
 
 void GameController::SetZoomPosition(ui::Point position)

@@ -64,9 +64,11 @@ void Engine::Exit()
 	running_ = false;
 }
 
-void Engine::ConfirmExit()
+void Engine::ConfirmExit(bool warnUnsavedChanges)
 {
-	new ConfirmPrompt("You are about to quit", "Are you sure you want to exit the game?", { [] {
+	String unsavedChangesMessage = "WARNING: You have unsaved changes";
+	String normalMessage = "You are about to quit";
+	new ConfirmPrompt(String(warnUnsavedChanges ? unsavedChangesMessage : normalMessage), "Are you sure you want to exit the game?", { [] {
 		ui::Engine::Ref().Exit();
 	} });
 }
