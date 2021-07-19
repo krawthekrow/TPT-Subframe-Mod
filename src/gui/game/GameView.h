@@ -49,6 +49,7 @@ private:
 	bool showHud;
 	bool showBrush;
 	bool showDebug;
+	int wavelengthGfxMode;
 	int delayedActiveMenu;
 	bool wallBrush;
 	bool toolBrush;
@@ -146,6 +147,8 @@ private:
 
 	std::optional<FindingElement> FindingElementCandidate() const;
 
+
+	void writeWavelength(StringBuilder *str, int wavelengthGfx);
 public:
 	GameView();
 	virtual ~GameView();
