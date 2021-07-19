@@ -174,6 +174,7 @@ public:
 	void ClearSim();
 	void ReloadSim();
 	void ReloadParticleOrder();
+	void ReloadParticleOrderIfNeeded();
 	void Vote(int direction);
 	void ChangeBrush();
 	void ShowConsole();
@@ -181,6 +182,8 @@ public:
 	void FrameStep();
 	void SubframeFrameStep();
 	bool IsSubframeFrameStepComplete();
+	bool IsFrameComplete();
+	bool AreParticlesInSubframeOrder();
 	void TransformPlaceSave(Mat2<int> transform, Vec2<int> nudge);
 	bool MouseInZoom(ui::Point position);
 	ui::Point PointTranslate(ui::Point point);
