@@ -361,6 +361,10 @@ void PropertyTool::SetProperty(Simulation *sim, ui::Point position)
 			break;
 		case StructProperty::ParticleType:
 		case StructProperty::Integer:
+			if (configuration->prop.Name == "ctype" && (sim->parts[ID(i)].type == PT_FILT || sim->parts[ID(i)].type == PT_BRAY || sim->parts[ID(i)].type == PT_PHOT))
+			{
+				configuration->propValue = std::get<int>(configuration->propValue) & 0x3FFFFFFF;
+			}
 			*((int*)(((char*)&sim->parts[ID(i)])+configuration->prop.Offset)) = std::get<int>(configuration->propValue);
 			break;
 		case StructProperty::UInteger:
