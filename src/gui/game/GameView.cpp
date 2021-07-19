@@ -1402,7 +1402,7 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 		break;
 	case SDL_SCANCODE_P:
 	case SDL_SCANCODE_F2:
-		if (ctrl)
+		if (ctrl || scan == SDL_SCANCODE_P)
 		{
 			if (shift)
 				c->SetActiveTool(1, "DEFAULT_UI_PROPERTY");
