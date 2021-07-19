@@ -1063,6 +1063,11 @@ void GameModel::SetSaveFile(std::unique_ptr<SaveFile> newSave, bool invertInclud
 	UpdateQuickOptions();
 }
 
+bool GameModel::AreParticlesInSubframeOrder()
+{
+	return sim->AreParticlesInSubframeOrder();
+}
+
 Simulation * GameModel::GetSimulation()
 {
 	return sim;

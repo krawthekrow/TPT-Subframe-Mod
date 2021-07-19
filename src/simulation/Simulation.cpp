@@ -2123,6 +2123,27 @@ void Simulation::delete_part(int x, int y)//calls kill_part with the particle lo
 	kill_part(ID(i));
 }
 
+bool Simulation::AreParticlesInSubframeOrder()
+{
+	int cx = 0, cy = 0;
+	for (int i = 0; i < NPART; i++)
+	{
+		int x, y;
+		x = int(parts[i].x + 0.5f);
+		y = int(parts[i].y + 0.5f);
+		if (!parts[i].type)
+		{
+			continue;
+		}
+		if (y < cy || (y == cy && x < cx)) {
+			return false;
+		}
+		cx = x;
+		cy = y;
+	}
+	return true;
+}
+
 template<bool UpdateEmap, class Sim>
 void UpdateEmapHelper(Sim &sim, int fin_x, int fin_y);
 

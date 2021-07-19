@@ -210,6 +210,7 @@ public:
 	void SetSave(std::unique_ptr<SaveInfo> newSave, bool invertIncludePressure);
 	void SetSaveFile(std::unique_ptr<SaveFile> newSave, bool invertIncludePressure);
 	void AddObserver(GameView * observer);
+	bool AreParticlesInSubframeOrder();
 
 	void SetPaused(bool pauseState);
 	bool GetPaused();
