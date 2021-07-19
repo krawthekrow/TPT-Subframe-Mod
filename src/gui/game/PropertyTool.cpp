@@ -187,6 +187,12 @@ void PropertyWindow::CheckProperty()
 					//#C0FFEE
 					v = value.Substr(1).ToNumber<unsigned int>(Format::Hex());
 				}
+				else if(value.length() > 5 && value.BeginsWith("FILT:"))
+				{
+					// CRAY(FILT), e.g. filt:5
+					v = value.Substr(5).ToNumber<unsigned int>();
+					v = PMAP(v, PT_FILT);
+				}
 				else
 				{
 					// Try to parse as particle name
