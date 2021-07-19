@@ -10,6 +10,9 @@
 class Snapshot
 {
 public:
+	int debug_mostRecentlyUpdated;
+	int debug_nextToUpdate;
+
 	std::vector<float> AirPressure;
 	std::vector<float> AirVelocityX;
 	std::vector<float> AirVelocityY;
