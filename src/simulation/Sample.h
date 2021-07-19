@@ -5,6 +5,12 @@ struct SimulationSample
 {
 	Particle particle;
 	int ParticleID = 0;
+	int SParticleCount = 0;
+	Particle SParticles[5] = {0};
+	int SParticleIDs[5] = {0};
+	int StackIndexBegin = 0;
+	int StackIndexEnd = 0;
+
 	int PositionX = 0;
 	int PositionY = 0;
 	float AirPressure = 0;
