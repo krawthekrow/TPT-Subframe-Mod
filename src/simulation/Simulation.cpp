@@ -524,6 +524,28 @@ void Simulation::UpdateSample(int x, int y)
 	sample.PositionY = y;
 	if (x >= 0 && x < XRES && y >= 0 && y < YRES)
 	{
+		sample.SParticleCount = 0;
+		int stackIds[5];
+		for (int i = parts_lastActiveIndex; i >= 0; i--)
+		{
+			if (!parts[i].type)
+				continue;
+			int partx = (int)(parts[i].x+0.5f);
+			int party = (int)(parts[i].y+0.5f);
+			if (partx != x || party != y)
+				continue;
+			if (sample.SParticleCount < 5)
+				stackIds[sample.SParticleCount] = i;
+			sample.SParticleCount++;
+		}
+		sample.StackIndexBegin = 0;
+		sample.StackIndexEnd = (sample.SParticleCount > 5) ? 5 : sample.SParticleCount;
+		for (int i = sample.StackIndexBegin; i < sample.StackIndexEnd; i++)
+		{
+			sample.SParticles[i] = parts[stackIds[i]];
+			sample.SParticleIDs[i] = stackIds[i];
+		}
+
 		if (photons[y][x])
 		{
 			sample.particle = parts[ID(photons[y][x])];
