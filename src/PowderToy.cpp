@@ -484,23 +484,25 @@ int Main(int argc, char *argv[])
 	auto openArg = arguments["open"];
 	if (openArg.has_value())
 	{
+		ByteString filename = ByteString::Build(LOCAL_SAVE_DIR, PATH_SEP_CHAR, openArg.value(), ".cps");
 		if constexpr (DEBUG)
 		{
-			std::cout << "Loading " << openArg.value() << std::endl;
+			std::cout << "Loading " << filename << std::endl;
 		}
-		if (Platform::FileExists(openArg.value()))
+		if (Platform::FileExists(filename))
 		{
 			try
 			{
 				std::vector<char> gameSaveData;
-				if (!Platform::ReadFile(gameSaveData, openArg.value()))
+				if (!Platform::ReadFile(gameSaveData, filename))
 				{
 					new ErrorMessage("Error", "Could not read file");
 				}
 				else
 				{
-					auto newFile = std::make_unique<SaveFile>(openArg.value());
+					auto newFile = std::make_unique<SaveFile>(filename);
 					auto newSave = std::make_unique<GameSave>(std::move(gameSaveData));
+					newFile->SetDisplayName(openArg.value().FromUtf8());
 					newFile->SetGameSave(std::move(newSave));
 					gameController->LoadSaveFile(std::move(newFile));
 				}
