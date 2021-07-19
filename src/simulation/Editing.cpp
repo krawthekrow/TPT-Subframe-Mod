@@ -37,6 +37,8 @@ std::unique_ptr<Snapshot> Simulation::CreateSnapshot() const
 	snap->stickmen       .push_back(player2);
 	snap->stickmen       .push_back(player);
 	snap->signs = signs;
+	snap->debug_mostRecentlyUpdated = debug_mostRecentlyUpdated;
+	snap->debug_nextToUpdate = debug_nextToUpdate;
 	snap->FrameCount = frameCount;
 	snap->RngState = rng.state();
 	return snap;
@@ -81,6 +83,8 @@ void Simulation::Restore(const Snapshot &snap)
 	parts_lastActiveIndex = NPART - 1;
 	RecalcFreeParticles(false);
 	gravWallChanged = true;
+	debug_mostRecentlyUpdated = snap.debug_mostRecentlyUpdated;
+	debug_nextToUpdate = snap.debug_nextToUpdate;
 }
 
 void Simulation::clear_area(int area_x, int area_y, int area_w, int area_h)
