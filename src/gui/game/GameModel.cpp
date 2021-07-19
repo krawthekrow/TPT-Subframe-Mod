@@ -49,6 +49,7 @@ GameModel::GameModel():
 	currentBrush(0),
 	currentUser(0, ""),
 	toolStrength(1.0f),
+	wasModified(false),
 	historyPosition(0),
 	activeColourPreset(0),
 	colourSelector(false),
@@ -836,6 +837,16 @@ void GameModel::SetBrushID(int i)
 	notifyBrushChanged();
 }
 
+bool GameModel::GetWasModified()
+{
+	return wasModified;
+}
+
+void GameModel::SetWasModified(bool value)
+{
+	wasModified = value;
+}
+
 void GameModel::AddObserver(GameView * observer){
 	observers.push_back(observer);
 
@@ -1052,6 +1063,7 @@ void GameModel::SetSaveFile(std::unique_ptr<SaveFile> newSave, bool invertInclud
 		ren->ClearAccumulation();
 		sim->Load(saveData, !invertIncludePressure, { 0, 0 });
 		Client::Ref().OverwriteAuthorInfo(saveData->authors);
+		SetWasModified(false);
 	}
 
 	notifySaveChanged();

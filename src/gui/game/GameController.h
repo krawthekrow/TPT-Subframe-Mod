@@ -153,6 +153,8 @@ public:
 	void SetActiveColourPreset(int preset);
 	void SetColour(ui::Colour colour);
 	void SetToolStrength(float value);
+	bool GetHasUnsavedChanges();
+	void SetWasModified(bool value);
 	void LoadSaveFile(std::unique_ptr<SaveFile> file);
 	void LoadSave(std::unique_ptr<SaveInfo> save);
 	void OpenSearch(String searchText);

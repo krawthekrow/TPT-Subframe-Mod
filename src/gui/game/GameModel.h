@@ -82,6 +82,7 @@ private:
 	float toolStrength;
 	std::deque<HistoryEntry> history;
 	std::unique_ptr<Snapshot> historyCurrent;
+	bool wasModified;
 	unsigned int historyPosition;
 	unsigned int undoHistoryLimit;
 	bool mouseClickRequired;
@@ -201,6 +202,9 @@ public:
 		return int(brushList.size());
 	}
 	void SetBrushID(int i);
+
+	bool GetWasModified();
+	void SetWasModified(bool value);
 
 	void SetVote(int direction);
 	SaveInfo *GetSave(); // non-owning
