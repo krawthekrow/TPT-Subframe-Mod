@@ -85,6 +85,7 @@ void Simulation::Restore(const Snapshot &snap)
 	gravWallChanged = true;
 	debug_mostRecentlyUpdated = snap.debug_mostRecentlyUpdated;
 	debug_nextToUpdate = snap.debug_nextToUpdate;
+	needReloadParticleOrder = true;
 }
 
 void Simulation::clear_area(int area_x, int area_y, int area_w, int area_h)
@@ -139,6 +140,7 @@ int Simulation::Tool(int x, int y, int tool, int brushX, int brushY, float stren
 	else if ((r = photons[y][x]))
 		cpart = &(parts[ID(r)]);
 	auto &sd = SimulationData::CRef();
+	needReloadParticleOrder = true;
 	return sd.tools[tool].Perform(this, cpart, x, y, brushX, brushY, strength);
 }
 
@@ -335,6 +337,9 @@ int Simulation::CreatePartFlags(int x, int y, int c, int flags)
 	{
 		return 0;
 	}
+
+	if (TYP(c) != PT_SPRK)
+		needReloadParticleOrder = true;
 
 	if (flags & REPLACE_MODE)
 	{

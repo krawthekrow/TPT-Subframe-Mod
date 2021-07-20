@@ -79,6 +79,7 @@ GameController::GameController():
 	localBrowser(NULL),
 	options(NULL),
 	debugFlags(0),
+	autoreloadEnabled(0),
 	HasDone(false)
 {
 	gameView = new GameView();
@@ -97,7 +98,7 @@ GameController::GameController():
 	debugInfo.push_back(std::make_unique<DebugParts            >(DEBUG_PARTS     , gameModel->GetSimulation()));
 	debugInfo.push_back(std::make_unique<ElementPopulationDebug>(DEBUG_ELEMENTPOP, gameModel->GetSimulation()));
 	debugInfo.push_back(std::make_unique<DebugLines            >(DEBUG_LINES     , gameView, this));
-	debugInfo.push_back(std::make_unique<ParticleDebug         >(DEBUG_PARTICLE  , gameModel->GetSimulation(), gameModel));
+	debugInfo.push_back(std::make_unique<ParticleDebug         >(DEBUG_PARTICLE  , gameModel->GetSimulation(), gameModel, this));
 	debugInfo.push_back(std::make_unique<SurfaceNormals        >(DEBUG_SURFNORM  , gameModel->GetSimulation(), gameView, this));
 }
 
@@ -239,6 +240,7 @@ void GameController::PlaceSave(ui::Point position)
 	if (placeSave)
 	{
 		HistorySnapshot();
+		gameModel->GetSimulation()->needReloadParticleOrder = true;
 		gameModel->GetSimulation()->Load(placeSave, !gameView->ShiftBehaviour(), position);
 		gameModel->SetPaused(placeSave->paused | gameModel->GetPaused());
 		Client::Ref().MergeStampAuthorInfo(placeSave->authors);
@@ -862,6 +864,15 @@ void GameController::Update()
 {
 	auto &sd = SimulationData::CRef();
 	Simulation * sim = gameModel->GetSimulation();
+
+	if (!sim->sys_pause || sim->framerender)
+	{
+		if (GetAutoreloadEnabled() && sim->needReloadParticleOrder)
+		{
+			ReloadParticleOrder();
+		}
+	}
+
 	if (!sim->sys_pause || sim->framerender)
 	{
 		gameModel->UpdateUpTo(NPART);

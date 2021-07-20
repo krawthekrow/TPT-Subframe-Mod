@@ -56,6 +56,7 @@ public:
 	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
 	bool debug_interestingChangeOccurred;
+	bool needReloadParticleOrder;
 	int parts_lastActiveIndex;
 	int pfree;
 	int NUM_PARTS;

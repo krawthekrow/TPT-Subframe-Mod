@@ -1008,6 +1008,7 @@ void Simulation::clear_sim(void)
 	debug_nextToUpdate = 0;
 	debug_mostRecentlyUpdated = -1;
 	debug_interestingChangeOccurred = false;
+	needReloadParticleOrder = false;
 	emp_decor = 0;
 	emp_trigger_count = 0;
 	signs.clear();
@@ -3591,6 +3592,7 @@ void Simulation::ReloadParticleOrder()
 	FixSoapLinks(soapList);
 	parts_lastActiveIndex = NPART-1;
 	RecalcFreeParticles(false);
+	needReloadParticleOrder = false;
 }
 
 void Simulation::SimulateGoL()
@@ -4058,6 +4060,7 @@ Simulation::Simulation():
 	replaceModeFlags(0),
 	debug_nextToUpdate(0),
 	debug_interestingChangeOccurred(false),
+	needReloadParticleOrder(false),
 	ISWIRE(0),
 	force_stacking_check(false),
 	emp_decor(0),
