@@ -221,6 +221,20 @@ static int debug(lua_State *L)
 	return 0;
 }
 
+static int autoreload_enable(lua_State *L)
+{
+	auto *lsi = GetLSI();
+	int acount = lua_gettop(L);
+	if (acount == 0)
+	{
+		lua_pushinteger(L, lsi->gameController->GetAutoreloadEnabled());
+		return 1;
+	}
+	int autoreloadstate = luaL_checkint(L, 1);
+	lsi->gameController->SetAutoreloadEnabled(autoreloadstate==1);
+	return 0;
+}
+
 static int fpsCap(lua_State *L)
 {
 	int acount = lua_gettop(L);
@@ -286,6 +300,7 @@ void LuaMisc::Open(lua_State *L)
 		LFUNC(record_subframe),
 		LFUNC(setrecordinterval),
 		LFUNC(debug),
+		LFUNC(autoreload_enable),
 		LFUNC(fpsCap),
 		LFUNC(drawCap),
 		LFUNC(compatChunk),

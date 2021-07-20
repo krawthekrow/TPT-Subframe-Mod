@@ -1,13 +1,15 @@
 #include "ParticleDebug.h"
 
 #include "gui/game/GameModel.h"
+#include "gui/game/GameController.h"
 
 #include "simulation/Simulation.h"
 
-ParticleDebug::ParticleDebug(unsigned int id, Simulation * sim, GameModel * model):
+ParticleDebug::ParticleDebug(unsigned int id, Simulation * sim, GameModel * model, GameController * c):
 	DebugInfo(id),
 	sim(sim),
-	model(model)
+	model(model),
+	c(c)
 {
 
 }
@@ -33,6 +35,13 @@ void ParticleDebug::Debug(int mode, int x, int y)
 {
 	int i = 0;
 	String logmessage;
+
+	if (sim->debug_nextToUpdate == 0 && sim->needReloadParticleOrder && c->GetAutoreloadEnabled())
+	{
+		model->ReloadParticleOrder();
+
+		model->Log("Particle order reloaded.", false);
+	}
 
 	if (mode == 0)
 	{
