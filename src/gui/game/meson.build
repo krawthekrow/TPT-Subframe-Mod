@@ -12,6 +12,7 @@ powder_files += files(
 	'QuickOptions.cpp',
 	'SampleTool.cpp',
 	'SignTool.cpp',
+	'StackTool.cpp',
 	'ToolButton.cpp',
 	'Tool.cpp',
 )

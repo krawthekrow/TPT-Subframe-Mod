@@ -59,6 +59,10 @@ public:
 
 	SimulationSample sample;
 
+	bool stackToolNotifShown;
+	int stackToolNotifShownX;
+	int stackToolNotifShownY;
+
 	char can_move[PT_NUM][PT_NUM];
 	int debug_currentParticle;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops

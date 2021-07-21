@@ -680,6 +680,11 @@ bool GameController::KeyPress(int key, int scan, bool repeat, bool shift, bool c
 				gameView->SetDebugHUD(!gameView->GetDebugHUD());
 				break;
 			case SDL_SCANCODE_S:
+				if (shift)
+				{
+					SetActiveTool(0, "DEFAULT_UI_STACK");
+					break;
+				}
 				gameView->BeginStampSelection();
 				break;
 			}
@@ -873,6 +878,11 @@ void GameController::ResetAHeat()
 void GameController::ToggleNewtonianGravity()
 {
 	gameModel->SetNewtonianGravity(!gameModel->GetNewtonianGrvity());
+}
+
+void GameController::ResetStackToolNotifShown()
+{
+	gameModel->GetSimulation()->stackToolNotifShown = false;
 }
 
 void GameController::LoadRenderPreset(int presetNum)

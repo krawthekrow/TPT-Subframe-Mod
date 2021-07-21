@@ -1300,6 +1300,7 @@ void GameView::OnMouseUp(int x, int y, unsigned button)
 	// update the drawing mode for the next line
 	// since ctrl/shift state may have changed since we started drawing
 	UpdateDrawMode();
+	c->ResetStackToolNotifShown();
 }
 
 void GameView::ToolTip(ui::Point senderPosition, String toolTip)
