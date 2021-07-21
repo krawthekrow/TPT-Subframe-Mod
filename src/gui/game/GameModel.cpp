@@ -376,6 +376,7 @@ void GameModel::BuildMenus()
 	//Add special sign and prop tools
 	menuList[SC_TOOL]->AddTool(new WindTool());
 	menuList[SC_TOOL]->AddTool(new PropertyTool(*this));
+	menuList[SC_TOOL]->AddTool(new StackTool(*this));
 	menuList[SC_TOOL]->AddTool(new SignTool(*this));
 	menuList[SC_TOOL]->AddTool(new SampleTool(*this));
 	menuList[SC_LIFE]->AddTool(new GOLTool(*this));

@@ -53,6 +53,10 @@ public:
 
 	SimulationSample sample;
 
+	bool stackToolNotifShown;
+	int stackToolNotifShownX;
+	int stackToolNotifShownY;
+
 	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
 	bool debug_interestingChangeOccurred;

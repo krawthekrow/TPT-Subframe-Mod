@@ -88,4 +88,6 @@ public:
 	void RenderFill(Renderer * ren, ui::Point position) const;
 
 	void SetRadius(ui::Point newRadius);
+
+	bool HasPoint(ui::Point position) const;
 };

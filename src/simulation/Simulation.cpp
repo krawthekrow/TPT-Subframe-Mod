@@ -4079,6 +4079,7 @@ Simulation::~Simulation() = default;
 Simulation::Simulation():
 	replaceModeSelected(0),
 	replaceModeFlags(0),
+	stackToolNotifShown(false),
 	debug_nextToUpdate(0),
 	debug_interestingChangeOccurred(false),
 	needReloadParticleOrder(false),

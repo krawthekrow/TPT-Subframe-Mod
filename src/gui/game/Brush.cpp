@@ -132,3 +132,11 @@ void Brush::RenderFill(Renderer * ren, ui::Point position) const
 	ren->XorLine(position - Vec2{ 0, 5 }, position - Vec2{ 0, 1 });
 	ren->XorLine(position + Vec2{ 0, 5 }, position + Vec2{ 0, 1 });
 }
+
+bool Brush::HasPoint(ui::Point position) const
+{
+	ui::Point size = GetSize();
+	int bmpx = position.X + radius.X;
+	int bmpy = position.Y + radius.Y;
+	return bmpx >= 0 && bmpx < size.X && bmpy >= 0 && bmpy < size.Y && bitmap[bmpy * size.X + bmpx];
+}

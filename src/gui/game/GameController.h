@@ -208,6 +208,7 @@ public:
 	bool GetAHeatEnable();
 	void ResetAHeat();
 	void ToggleNewtonianGravity();
+	void ResetStackToolNotifShown();
 
 	bool LoadClipboard();
 	void LoadStamp(std::unique_ptr<GameSave> stamp);
