@@ -2370,7 +2370,7 @@ void GameView::OnDraw()
 				{
 					auto rect = RectSized(PlaceSavePos() * CELL, placeSaveThumb->Size());
 					ren->BlendImage(placeSaveThumb->Data(), 0x80, rect);
-					ren->XorDottedRect(rect);
+					// Don't show xor-rect when placing save
 				}
 			}
 			else
