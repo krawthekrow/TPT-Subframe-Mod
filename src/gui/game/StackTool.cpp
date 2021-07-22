@@ -172,31 +172,28 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 	}
 }
 
-void StackTool::Draw(Simulation *sim, Brush *cBrush, ui::Point position)
+void StackTool::Draw(Simulation *sim, Brush const &cBrush, ui::Point position)
 {
-	if (cBrush)
+	std::vector<int> parts;
+	for (int i=0; i<=sim->parts_lastActiveIndex; i++)
 	{
-		std::vector<int> parts;
-		for (int i=0; i<=sim->parts_lastActiveIndex; i++)
+		if (sim->parts[i].type)
 		{
-			if (sim->parts[i].type)
-			{
-				int partx = (int)(sim->parts[i].x+0.5f);
-				int party = (int)(sim->parts[i].y+0.5f);
-				if (cBrush->HasPoint(ui::Point(partx, party) - position))
-					parts.push_back(i);
-			}
+			int partx = (int)(sim->parts[i].x+0.5f);
+			int party = (int)(sim->parts[i].y+0.5f);
+			if (cBrush.HasPoint(ui::Point(partx, party) - position))
+				parts.push_back(i);
 		}
-		ProcessParts(sim, parts, position, position);
 	}
+	ProcessParts(sim, parts, position, position);
 }
 
-void StackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2, bool dragging)
+void StackTool::DrawLine(Simulation *sim, Brush const &cBrush, ui::Point position, ui::Point position2, bool dragging)
 {
 	std::vector<ui::Point> points;
 	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
 	bool reverseXY = abs(y2-y1) > abs(x2-x1);
-	int x, y, dx, dy, sy, rx = cBrush->GetRadius().X, ry = cBrush->GetRadius().Y;
+	int x, y, dx, dy, sy, rx = cBrush.GetRadius().X, ry = cBrush.GetRadius().Y;
 	float e = 0.0f, de;
 	if (reverseXY)
 	{
@@ -261,7 +258,7 @@ void StackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui:
 	ProcessParts(sim, parts, position, position2);
 }
 
-void StackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2)
+void StackTool::DrawRect(Simulation *sim, Brush const &cBrush, ui::Point position, ui::Point position2)
 {
 	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
 	int i, j;
