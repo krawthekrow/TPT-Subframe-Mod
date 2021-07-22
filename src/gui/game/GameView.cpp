@@ -200,6 +200,8 @@ GameView::GameView():
 	recording(false),
 	recordingFolder(0),
 	recordingSubframe(false),
+	recordInterval(1),
+	recordIntervalIndex(0),
 	currentPoint(ui::Point(0, 0)),
 	lastPoint(ui::Point(0, 0)),
 	ren(NULL),
@@ -984,6 +986,7 @@ int GameView::Record(bool record, bool subframe)
 		recording = false;
 		recordingFolder = 0;
 		recordingSubframe = false;
+		recordIntervalIndex = 0;
 	}
 	else if (recording && subframe && !recordingSubframe)
 	{
@@ -998,6 +1001,7 @@ int GameView::Record(bool record, bool subframe)
 		Platform::MakeDirectory(ByteString::Build("recordings", PATH_SEP_CHAR, recordingFolder));
 		recording = true;
 		recordingIndex = 0;
+		recordIntervalIndex = 0;
 
 		if (subframe)
 		{
@@ -2268,13 +2272,21 @@ void GameView::OnDraw()
 			TakeScreenshot(0, 0);
 		}
 
-		if(recording)
+		if (recording && recordIntervalIndex == 0)
 		{
 			std::vector<char> data = ren->DumpFrame().ToPPM();
 
 			ByteString filename = ByteString::Build("recordings", PATH_SEP_CHAR, recordingFolder, PATH_SEP_CHAR, "frame_", Format::Width(recordingIndex++, 6), ".ppm");
 
 			Platform::WriteFile(data, filename);
+		}
+
+		if (recording)
+		{
+			recordIntervalIndex++;
+			if (recordIntervalIndex >= recordInterval) {
+				recordIntervalIndex = 0;
+			}
 		}
 
 		if (recordingSubframe && c->IsSubframeFrameStepComplete()) {

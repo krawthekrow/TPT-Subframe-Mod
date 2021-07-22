@@ -77,6 +77,8 @@ private:
 	bool recording;
 	int recordingFolder;
 	bool recordingSubframe;
+	int recordInterval;
+	int recordIntervalIndex;
 
 	ui::Point currentPoint, lastPoint;
 	GameController * c;
@@ -169,6 +171,8 @@ public:
 	ByteString TakeScreenshot(int captureUI, int fileType);
 	int Record(bool record, bool subframe = false);
 	bool GetRecordingSubframe(){ return recordingSubframe; }
+	int GetRecordInterval() { return recordInterval; }
+	void SetRecordInterval(int val) { recordInterval = val; }
 
 	//all of these are only here for one debug lines
 	bool GetMouseDown() { return isMouseDown; }
