@@ -4,6 +4,7 @@
 #include "client/StartupInfo.h"
 #include "gui/interface/Point.h"
 #include "gui/interface/Colour.h"
+#include "gui/game/Tool.h"
 #include "gui/SavePreviewType.h"
 #include "simulation/Sign.h"
 #include "simulation/Particle.h"
@@ -148,6 +149,7 @@ public:
 	Tool *GetLastTool();
 	SimulationSample * GetSample();
 	int GetParticleDebugPosition();
+	ConfigTool * GetActiveConfigTool();
 	int GetReplaceModeFlags();
 	void SetReplaceModeFlags(int flags);
 	void SetActiveColourPreset(int preset);

@@ -3,6 +3,9 @@
 
 struct SimulationSample
 {
+	static const int SPRK_FLAG = 0x1;
+	static const int FILT_FLAG = 0x2;
+
 	Particle particle;
 	int ParticleID = 0;
 	int SParticleCount = 0;
@@ -10,6 +13,9 @@ struct SimulationSample
 	int SParticleIDs[5] = {0};
 	int StackIndexBegin = 0;
 	int StackIndexEnd = 0;
+
+	// config tool info
+	int AdjacentPartsInfo[3][3] = {0};
 
 	int PositionX = 0;
 	int PositionY = 0;
