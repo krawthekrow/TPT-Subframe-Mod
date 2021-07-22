@@ -52,6 +52,11 @@ public:
 	Particle stackReorderParts[NPART];
 
 	SimulationSample sample;
+	// configToolSample will change the stack sample
+	// but not the pmap sample during UpdateSample
+	bool configToolSampleActive;
+	int configToolSampleX;
+	int configToolSampleY;
 
 	bool stackToolNotifShown;
 	int stackToolNotifShownX;

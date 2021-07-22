@@ -37,7 +37,8 @@ constexpr int SC_TOTAL     = 16;
 
 constexpr int TS_REGULAR   = 0;
 constexpr int TS_DECO      = 1;
-constexpr int TS_TOTAL     = 2;
+constexpr int TS_CONFIG    = 2;
+constexpr int TS_TOTAL     = 3;
 
 constexpr int O_WL_WALLELEC     = 122;
 constexpr int O_WL_EWALL        = 123;
