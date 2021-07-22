@@ -427,6 +427,12 @@ void GameController::DrawPoints(int toolSelection, ui::Point oldPos, ui::Point n
 	}
 
 	activeTool->SetStrength(gameModel->GetToolStrength());
+	if ((GetReplaceModeFlags() & STACK_MODE) && held)
+	{
+		if (oldPos != newPos)
+			activeTool->Draw(sim, cBrush, newPos);
+		return;
+	}
 	if (!held)
 		activeTool->Draw(sim, cBrush, newPos);
 	else
@@ -677,6 +683,11 @@ bool GameController::KeyPress(int key, int scan, bool repeat, bool shift, bool c
 				SwitchGravity();
 				break;
 			case SDL_SCANCODE_D:
+				if (shift)
+				{
+					gameView->ToggleStackMode();
+					break;
+				}
 				gameView->SetDebugHUD(!gameView->GetDebugHUD());
 				break;
 			case SDL_SCANCODE_S:

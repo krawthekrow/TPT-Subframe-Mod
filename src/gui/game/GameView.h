@@ -153,6 +153,7 @@ public:
 	bool GetDebugHUD();
 	bool GetPlacingSave();
 	bool GetPlacingZoom();
+	void ToggleStackMode();
 	void SetActiveMenuDelayed(int activeMenu) { delayedActiveMenu = activeMenu; }
 	bool CtrlBehaviour(){ return ctrlBehaviour; }
 	bool ShiftBehaviour(){ return shiftBehaviour; }

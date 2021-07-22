@@ -516,6 +516,12 @@ bool GameView::GetPlacingZoom()
 	return zoomEnabled && !zoomCursorFixed;
 }
 
+void GameView::ToggleStackMode()
+{
+	c->ReloadParticleOrderIfNeeded();
+	c->SetReplaceModeFlags(c->GetReplaceModeFlags()^STACK_MODE);
+}
+
 void GameView::NotifyActiveToolsChanged(GameModel * sender)
 {
 	for (size_t i = 0; i < toolButtons.size(); i++)
@@ -2563,6 +2569,8 @@ void GameView::OnDraw()
 			fpsInfo << " [Repl]";
 		if (c->GetReplaceModeFlags()&SPECIFIC_DELETE)
 			fpsInfo << " [Spec Del]";
+		if (c->GetReplaceModeFlags()&STACK_MODE)
+			fpsInfo << " [Stack]";
 		if (ren && ren->GetGridSize())
 			fpsInfo << " [Gr: " << ren->GetGridSize() << "]";
 		if (ren && ren->findingElement)
