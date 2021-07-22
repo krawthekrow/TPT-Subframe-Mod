@@ -960,6 +960,11 @@ void GameController::Update()
 		if (!sim->player2.spwn)
 			Element_STKM_set_element(sim, &sim->player2, rightSelected);
 	}
+
+	ConfigTool * configTool = GetActiveConfigTool();
+	if (configTool)
+		configTool->Update(sim);
+
 	if(renderOptions && renderOptions->HasExited)
 	{
 		delete renderOptions;
@@ -1171,6 +1176,14 @@ Tool * GameController::GetActiveTool(int selection)
 
 void GameController::SetActiveTool(int toolSelection, Tool * tool)
 {
+	if(tool->GetIdentifier() == "DEFAULT_UI_CONFIG")
+	{
+		((ConfigTool *)tool)->Reset(gameModel->GetSimulation());
+		toolSelection = 0;
+		gameModel->SetActiveMenu(SC_TOOL);
+	}
+	if (tool->GetIdentifier() == "DEFAULT_UI_STACK")
+		SetActiveMenu(SC_TOOL);
 	if (gameModel->GetActiveMenu() == SC_DECO && toolSelection == 2)
 		toolSelection = 0;
 	gameModel->SetActiveTool(toolSelection, tool);
@@ -1212,6 +1225,14 @@ SimulationSample * GameController::GetSample()
 int GameController::GetParticleDebugPosition()
 {
 	return gameModel->GetSimulation()->debug_currentParticle;
+}
+
+ConfigTool * GameController::GetActiveConfigTool()
+{
+	Tool * t = GetActiveTool(0);
+	if(t->GetIdentifier() == "DEFAULT_UI_CONFIG")
+		return (ConfigTool*)t;
+	else return NULL;
 }
 
 int GameController::GetReplaceModeFlags()

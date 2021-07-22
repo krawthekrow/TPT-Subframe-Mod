@@ -730,6 +730,8 @@ void Simulation::UpdateSample(int x, int y)
 	sample.PositionY = y;
 	if (x >= 0 && x < XRES && y >= 0 && y < YRES)
 	{
+		int stackSampleX = configToolSampleActive ? configToolSampleX : x;
+		int stackSampleY = configToolSampleActive ? configToolSampleY : y;
 		sample.SParticleCount = 0;
 		int stackIds[5];
 		for (int i = parts_lastActiveIndex; i >= 0; i--)
@@ -738,7 +740,7 @@ void Simulation::UpdateSample(int x, int y)
 				continue;
 			int partx = (int)(parts[i].x+0.5f);
 			int party = (int)(parts[i].y+0.5f);
-			if (partx != x || party != y)
+			if (partx != stackSampleX || party != stackSampleY)
 				continue;
 			if (sample.SParticleCount < 5)
 				stackIds[sample.SParticleCount] = i;
@@ -776,6 +778,25 @@ void Simulation::UpdateSample(int x, int y)
 			sample.Gravity = gravp[(y/CELL)*(XRES/CELL)+(x/CELL)];
 			sample.GravityVelocityX = gravx[(y/CELL)*(XRES/CELL)+(x/CELL)];
 			sample.GravityVelocityY = gravy[(y/CELL)*(XRES/CELL)+(x/CELL)];
+		}
+
+		// get config tool adjacency info
+		for (int i = -1; i <= 1; i++)
+		{
+			for (int j = -1; j <= 1; j++)
+			{
+				int partInfo = 0;
+				int nx = x + j, ny = y + i;
+				int type = PT_NONE;
+				if (nx >= 0 && ny >= 0 && nx < XRES && ny < YRES)
+					type = TYP(pmap[ny][nx]);
+				bool conducts = elements[type].Properties&PROP_CONDUCTS;
+				if (type == PT_SPRK || type == PT_INST || conducts)
+					partInfo |= SimulationSample::SPRK_FLAG;
+				if (type == PT_FILT)
+					partInfo |= SimulationSample::FILT_FLAG;
+				sample.AdjacentPartsInfo[i+1][j+1] = partInfo;
+			}
 		}
 	}
 	else
@@ -5365,6 +5386,7 @@ Simulation::~Simulation()
 Simulation::Simulation():
 	replaceModeSelected(0),
 	replaceModeFlags(0),
+	configToolSampleActive(false),
 	stackToolNotifShown(false),
 	debug_currentParticle(0),
 	debug_interestingChangeOccurred(false),

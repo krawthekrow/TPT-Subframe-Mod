@@ -27,7 +27,8 @@
 
 #define TS_REGULAR 0
 #define TS_DECO 1
-#define TS_TOTAL 2
+#define TS_CONFIG 2
+#define TS_TOTAL 3
 
 #define O_WL_WALLELEC	122
 #define O_WL_EWALL		123

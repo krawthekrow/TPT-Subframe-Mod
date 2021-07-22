@@ -1,6 +1,7 @@
 powder_files += files(
 	'BitmapBrush.cpp',
 	'Brush.cpp',
+	'ConfigTool.cpp',
 	'DecorationTool.cpp',
 	'Favorite.cpp',
 	'GameController.cpp',

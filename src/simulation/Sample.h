@@ -6,12 +6,18 @@
 class SimulationSample
 {
 public:
+	static const int SPRK_FLAG = 0x1;
+	static const int FILT_FLAG = 0x2;
+
 	Particle particle;
 	int ParticleID;
 	int SParticleCount;
 	Particle SParticles[5];
 	int SParticleIDs[5];
 	int StackIndexBegin, StackIndexEnd;
+
+	// config tool info
+	int AdjacentPartsInfo[3][3];
 
 	int PositionX, PositionY;
 	float AirPressure;
