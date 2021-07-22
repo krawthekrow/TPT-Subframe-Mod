@@ -1893,6 +1893,11 @@ int Simulation::create_part(int p, int x, int y, int t, int v)
 	parts[i].x = (float)x;
 	parts[i].y = (float)y;
 
+	if (t == PT_CRAY && (p == -2))
+	{
+		parts[i].ctype = PT_SPRK;
+	}
+
 	//and finally set the pmap/photon maps to the newly created particle
 	if (elements[t].Properties & TYPE_ENERGY)
 		photons[y][x] = PMAP(i, t);
