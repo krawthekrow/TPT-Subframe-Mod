@@ -1611,6 +1611,16 @@ int GameController::Record(bool record, bool subframe)
 	return gameView->Record(record, subframe);
 }
 
+int GameController::GetRecordInterval()
+{
+	return gameView->GetRecordInterval();
+}
+
+void GameController::SetRecordInterval(int val)
+{
+	gameView->SetRecordInterval(val);
+}
+
 void GameController::NotifyAuthUserChanged(Client * sender)
 {
 	User newUser = sender->GetAuthUser();

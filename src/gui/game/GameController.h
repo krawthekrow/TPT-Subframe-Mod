@@ -185,6 +185,8 @@ public:
 	String WallName(int type);
 	ByteString TakeScreenshot(int captureUI, int fileType);
 	int Record(bool record, bool subframe = false);
+	int GetRecordInterval();
+	void SetRecordInterval(int val);
 
 	void ResetAir();
 	void ResetSpark();

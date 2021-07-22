@@ -186,6 +186,22 @@ static int record_subframe(lua_State *L)
 	return 1;
 }
 
+int setrecordinterval(lua_State* L)
+{
+	auto *lsi = GetLSI();
+	int acount = lua_gettop(L);
+	if (acount == 0)
+	{
+		lua_pushinteger(L, lsi->gameController->GetRecordInterval());
+		return 1;
+	}
+	int recordinterval = luaL_checkint(L, 1);
+	if (recordinterval < 1)
+		return luaL_error(L, "record interval too small");
+	lsi->gameController->SetRecordInterval(recordinterval);
+	return 0;
+}
+
 static int compatChunk(lua_State *L)
 {
 	lua_pushlstring(L, reinterpret_cast<const char *>(compat_lua), compat_lua_size);
@@ -268,6 +284,7 @@ void LuaMisc::Open(lua_State *L)
 		LFUNC(screenshot),
 		LFUNC(record),
 		LFUNC(record_subframe),
+		LFUNC(setrecordinterval),
 		LFUNC(debug),
 		LFUNC(fpsCap),
 		LFUNC(drawCap),
