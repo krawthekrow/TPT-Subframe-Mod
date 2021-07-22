@@ -111,11 +111,11 @@ public:
 	}
 	virtual ~StackTool() {}
 	void ProcessParts(Simulation * sim, std::vector<int> &parts, ui::Point position, ui::Point position2);
-	virtual void Click(Simulation * sim, Brush * brush, ui::Point position) { }
-	virtual void Draw(Simulation * sim, Brush * brush, ui::Point position);
-	virtual void DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging = false);
-	virtual void DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2);
-	virtual void DrawFill(Simulation * sim, Brush * brush, ui::Point position) { }
+	virtual void Click(Simulation * sim, Brush const &brush, ui::Point position) { }
+	virtual void Draw(Simulation * sim, Brush const &brush, ui::Point position);
+	virtual void DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging = false);
+	virtual void DrawRect(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2);
+	virtual void DrawFill(Simulation * sim, Brush const &brush, ui::Point position) { }
 };
 
 class PropertyTool: public Tool
