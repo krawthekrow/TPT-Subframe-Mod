@@ -26,6 +26,23 @@
 #include <iostream>
 #include <SDL.h>
 
+bool TryParseHexProperty(String value, int &out)
+{
+	if(value.length() > 2 && value.BeginsWith("0X"))
+	{
+		//0xC0FFEE
+		out = value.Substr(2).ToNumber<unsigned int>(Format::Hex());
+		return true;
+	}
+	else if(value.length() > 1 && value.BeginsWith("#"))
+	{
+		//#C0FFEE
+		out = value.Substr(1).ToNumber<unsigned int>(Format::Hex());
+		return true;
+	}
+	return false;
+}
+
 class PropertyWindow: public ui::Window
 {
 	void HandlePropertyChange();
@@ -177,21 +194,28 @@ void PropertyWindow::CheckProperty()
 			case StructProperty::ParticleType:
 			{
 				int v;
-				if(value.length() > 2 && value.BeginsWith("0X"))
+				if (TryParseHexProperty(value, v))
 				{
-					//0xC0FFEE
-					v = value.Substr(2).ToNumber<unsigned int>(Format::Hex());
-				}
-				else if(value.length() > 1 && value.BeginsWith("#"))
-				{
-					//#C0FFEE
-					v = value.Substr(1).ToNumber<unsigned int>(Format::Hex());
+					// found value, nothing to do
 				}
 				else if(value.length() > 5 && value.BeginsWith("FILT:"))
 				{
 					// CRAY(FILT), e.g. filt:5
 					v = value.Substr(5).ToNumber<unsigned int>();
 					v = PMAP(v, PT_FILT);
+				}
+				else if(value.length() > 2 && properties[property->GetOption().second].Name == "ctype" && value.BeginsWith("C:"))
+				{
+					// 30th-bit handling, e.g. C:100
+					if (TryParseHexProperty(value.Substr(2), v))
+					{
+						// found value, nothing to do
+					}
+					else
+					{
+						v = value.Substr(2).ToNumber<int>();
+					}
+					v = (v & 0x3FFFFFFF) | (1<<29);
 				}
 				else
 				{
