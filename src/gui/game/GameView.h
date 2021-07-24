@@ -1,7 +1,6 @@
 #pragma once
 #include "common/String.h"
 #include "gui/interface/Window.h"
-#include "simulation/Sample.h"
 #include "graphics/FindingElement.h"
 #include <ctime>
 #include <deque>
@@ -128,8 +127,6 @@ private:
 	void TransformSave(Mat2<int> mulToTransform);
 	void ApplyTransformPlaceSave();
 
-	SimulationSample sample;
-
 	void updateToolButtonScroll();
 
 	void SetSaveButtonTooltips();
@@ -153,7 +150,6 @@ public:
 
 	//Breaks MVC, but any other way is going to be more of a mess.
 	ui::Point GetMousePosition();
-	void SetSample(SimulationSample sample);
 	void SetHudEnable(bool hudState);
 	bool GetHudEnable();
 	void SetBrushEnable(bool hudState);
