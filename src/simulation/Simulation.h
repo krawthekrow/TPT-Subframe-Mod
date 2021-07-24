@@ -9,6 +9,8 @@
 #include "CoordStack.h"
 #include "gravity/GravityPtr.h"
 #include "common/tpt-rand.h"
+#include "Sample.h"
+
 #include "Element.h"
 #include "SimulationConfig.h"
 #include <cstring>
@@ -23,7 +25,6 @@ constexpr int CHANNELS = int(MAX_TEMP - 73) / 100 + 2;
 
 class Snapshot;
 class Brush;
-class SimulationSample;
 struct matrix2d;
 struct vector2d;
 
@@ -49,6 +50,8 @@ public:
 
 	// scratch space for stack reordering hacks
 	Particle stackReorderParts[NPART];
+
+	SimulationSample sample;
 
 	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
@@ -123,7 +126,7 @@ public:
 	void Load(const GameSave *save, bool includePressure, Vec2<int> blockP); // block coordinates
 	std::unique_ptr<GameSave> Save(bool includePressure, Rect<int> partR); // particle coordinates
 	void SaveSimOptions(GameSave &gameSave);
-	SimulationSample GetSample(int x, int y);
+	void UpdateSample(int x, int y);
 
 	std::unique_ptr<Snapshot> CreateSnapshot() const;
 	void Restore(const Snapshot &snap);

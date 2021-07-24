@@ -121,46 +121,6 @@ void Simulation::clear_area(int area_x, int area_y, int area_w, int area_h)
 	}
 }
 
-SimulationSample Simulation::GetSample(int x, int y)
-{
-	SimulationSample sample;
-	sample.PositionX = x;
-	sample.PositionY = y;
-	if (x >= 0 && x < XRES && y >= 0 && y < YRES)
-	{
-		if (photons[y][x])
-		{
-			sample.particle = parts[ID(photons[y][x])];
-			sample.ParticleID = ID(photons[y][x]);
-		}
-		else if (pmap[y][x])
-		{
-			sample.particle = parts[ID(pmap[y][x])];
-			sample.ParticleID = ID(pmap[y][x]);
-		}
-		if (bmap[y/CELL][x/CELL])
-		{
-			sample.WallType = bmap[y/CELL][x/CELL];
-		}
-		sample.AirPressure = pv[y/CELL][x/CELL];
-		sample.AirTemperature = hv[y/CELL][x/CELL];
-		sample.AirVelocityX = vx[y/CELL][x/CELL];
-		sample.AirVelocityY = vy[y/CELL][x/CELL];
-
-		if(grav->IsEnabled())
-		{
-			sample.Gravity = gravp[(y/CELL)*XCELLS+(x/CELL)];
-			sample.GravityVelocityX = gravx[(y/CELL)*XCELLS+(x/CELL)];
-			sample.GravityVelocityY = gravy[(y/CELL)*XCELLS+(x/CELL)];
-		}
-	}
-	else
-		sample.isMouseInSim = false;
-
-	sample.NumParts = NUM_PARTS;
-	return sample;
-}
-
 void Simulation::SetDecoSpace(int newDecoSpace)
 {
 	if (newDecoSpace < 0 || newDecoSpace >= NUM_DECOSPACES)

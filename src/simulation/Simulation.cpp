@@ -517,6 +517,45 @@ int Simulation::flood_prop(int x, int y, StructProperty prop, PropertyValue prop
 	return did_something;
 }
 
+void Simulation::UpdateSample(int x, int y)
+{
+	sample = SimulationSample();
+	sample.PositionX = x;
+	sample.PositionY = y;
+	if (x >= 0 && x < XRES && y >= 0 && y < YRES)
+	{
+		if (photons[y][x])
+		{
+			sample.particle = parts[ID(photons[y][x])];
+			sample.ParticleID = ID(photons[y][x]);
+		}
+		else if (pmap[y][x])
+		{
+			sample.particle = parts[ID(pmap[y][x])];
+			sample.ParticleID = ID(pmap[y][x]);
+		}
+		if (bmap[y/CELL][x/CELL])
+		{
+			sample.WallType = bmap[y/CELL][x/CELL];
+		}
+		sample.AirPressure = pv[y/CELL][x/CELL];
+		sample.AirTemperature = hv[y/CELL][x/CELL];
+		sample.AirVelocityX = vx[y/CELL][x/CELL];
+		sample.AirVelocityY = vy[y/CELL][x/CELL];
+
+		if(grav->IsEnabled())
+		{
+			sample.Gravity = gravp[(y/CELL)*(XRES/CELL)+(x/CELL)];
+			sample.GravityVelocityX = gravx[(y/CELL)*(XRES/CELL)+(x/CELL)];
+			sample.GravityVelocityY = gravy[(y/CELL)*(XRES/CELL)+(x/CELL)];
+		}
+	}
+	else
+		sample.isMouseInSim = false;
+
+	sample.NumParts = NUM_PARTS;
+}
+
 int Simulation::FloodINST(int x, int y)
 {
 	int x1, x2;
