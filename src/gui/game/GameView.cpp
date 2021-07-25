@@ -1611,7 +1611,8 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			}
 			break;
 		case SDLK_TAB: //Tab
-			c->ChangeBrush();
+			if (shift)
+				c->ChangeBrush();
 			break;
 		case SDLK_INSERT:
 			if (ctrl)
