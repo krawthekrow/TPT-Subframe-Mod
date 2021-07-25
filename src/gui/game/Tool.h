@@ -202,6 +202,7 @@ private:
 	ui::Point projectPoint(Particle part, int sampleX, int sampleY, bool allowDiag = true);
 	int getDist(ui::Point relPos, int offset = 0);
 	int getDist(Particle part, int sampleX, int sampleY, int offset = 0, bool allowDiag = true);
+	int getTargetStackEditDepth(SimulationSample *sample);
 	void drawRedLine(Renderer *ren, ui::Point start, ui::Point end);
 	void drawWhiteLine(Renderer *ren, ui::Point start, ui::Point end);
 	void drawTripleLine(Renderer *ren, int firstLineLen, int midLineLen, bool drawFirstLine = true, bool drawThirdLine = true);
