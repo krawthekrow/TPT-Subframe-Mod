@@ -180,6 +180,7 @@ private:
 	ui::Point projectPoint(Particle part, int sampleX, int sampleY, bool allowDiag = true);
 	int getDist(ui::Point relPos, int offset = 0);
 	int getDist(Particle part, int sampleX, int sampleY, int offset = 0, bool allowDiag = true);
+	int getTargetStackEditDepth(SimulationSample *sample);
 	void drawRedLine(Renderer *ren, int startx, int starty, int endx, int endy);
 	void drawWhiteLine(Renderer *ren, int startx, int starty, int endx, int endy);
 	void drawTripleLine(Renderer *ren, int firstLineLen, int midLineLen, bool drawFirstLine = true, bool drawThirdLine = true);

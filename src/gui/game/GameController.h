@@ -144,6 +144,8 @@ public:
 	int GetParticleDebugPosition();
 	ConfigTool * GetActiveConfigTool();
 	void ToggleConfigTool();
+	int GetStackEditDepth();
+	void SetStackEditDepth(int depth);
 	int GetReplaceModeFlags();
 	void SetReplaceModeFlags(int flags);
 	void SetActiveColourPreset(int preset);

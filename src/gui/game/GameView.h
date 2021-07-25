@@ -17,6 +17,11 @@ enum SelectMode
 	SelectNone, SelectStamp, SelectCopy, SelectCut, PlaceSave
 };
 
+enum HudParticleTextGlowType
+{
+	NONE, YELLOW, GREEN
+};
+
 namespace ui
 {
 	class Button;
@@ -127,7 +132,7 @@ private:
 
 	void SetSaveButtonTooltips();
 
-	void drawHudParticleText(Graphics *g, StringBuilder text, int yoffset, int alpha, int wavelengthGfx = 0);
+	void drawHudParticleText(Graphics *g, StringBuilder text, int yoffset, int alpha, int wavelengthGfx = 0, HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE);
 
 	void enableShiftBehaviour();
 	void disableShiftBehaviour();

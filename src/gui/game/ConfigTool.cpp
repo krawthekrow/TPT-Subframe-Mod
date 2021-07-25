@@ -137,6 +137,17 @@ int ConfigTool::getDist(Particle part, int sampleX, int sampleY, int offset, boo
 	return getDist(proj, offset);
 }
 
+int ConfigTool::getTargetStackEditDepth(SimulationSample *sample)
+{
+	for (int i = sample->EffectiveStackEditDepth; i < sample->StackIndexEnd; i++)
+	{
+		int stacki = i - sample->StackIndexBegin;
+		if (IsConfigurableType(sample->SParticles[stacki].type))
+			return stacki + sample->StackIndexBegin;
+	}
+	return -1;
+}
+
 void ConfigTool::OnSelectFiltTmp(Simulation *sim, int tmp)
 {
 	if (IsCorrupted(sim))
@@ -150,6 +161,8 @@ void ConfigTool::OnSelectFiltTmp(Simulation *sim, int tmp)
 void ConfigTool::Update(Simulation *sim)
 {
 	SimulationSample *sample = &sim->sample;
+	if (IsCorrupted(sim))
+		Reset(sim);
 	cursorPos = ui::Point(sample->PositionX, sample->PositionY);
 	bool allowDiag = !(
 		configState == ConfigState::dtecTmp2 ||
@@ -165,22 +178,22 @@ void ConfigTool::Update(Simulation *sim)
 	}
 	switch (configState)
 	{
-	case ConfigState::ready:
+	case ConfigState::ready: {
 		configPartId = -1;
 		if (!sample->isMouseInSim)
 			break;
 		memcpy(lastAdjacentPartsInfo, sample->AdjacentPartsInfo, sizeof(sample->AdjacentPartsInfo));
-		for (int i = sample->StackIndexBegin; i < sample->StackIndexEnd; i++)
+		int targetDepth = getTargetStackEditDepth(sample);
+		if (targetDepth == -1)
+			configPartId = -1;
+		else
 		{
-			int stacki = i - sample->StackIndexBegin;
-			if (IsConfigurableType(sample->SParticles[stacki].type))
-			{
-				configPartId = sample->SParticleIDs[stacki];
-				configPart = sample->SParticles[stacki];
-				break;
-			}
+			int stacki = targetDepth - sample->StackIndexBegin;
+			configPartId = sample->SParticleIDs[stacki];
+			configPart = sample->SParticles[stacki];
 		}
 		break;
+	}
 	case ConfigState::drayTmp:
 		configPart.tmp = getDist(proj);
 		break;
@@ -306,8 +319,15 @@ void ConfigTool::Click(Simulation *sim, Brush *brush, ui::Point position)
 
 bool ConfigTool::IsCorrupted(Simulation *sim)
 {
-	return configState != ConfigState::ready &&
-		!isSamePart(sim->parts[configPartId], configPart);
+	if (configState == ConfigState::ready)
+		return false;
+	if (!isSamePart(sim->parts[configPartId], configPart))
+		return true;
+	int targetDepth = getTargetStackEditDepth(&sim->sample);
+	if (targetDepth == -1)
+		return configPartId != -1;
+	int stacki = targetDepth - sim->sample.StackIndexBegin;
+	return sim->sample.SParticleIDs[stacki] != configPartId;
 }
 
 void ConfigTool::Reset(Simulation *sim)

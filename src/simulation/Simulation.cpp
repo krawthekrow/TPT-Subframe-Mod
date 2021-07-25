@@ -734,6 +734,9 @@ void Simulation::UpdateSample(int x, int y)
 		int stackSampleY = configToolSampleActive ? configToolSampleY : y;
 		sample.SParticleCount = 0;
 		int stackIds[5];
+		int maxStackSample = stackEditDepth + 3;
+		if (maxStackSample < 5)
+			maxStackSample = 5;
 		for (int i = parts_lastActiveIndex; i >= 0; i--)
 		{
 			if (!parts[i].type)
@@ -742,17 +745,28 @@ void Simulation::UpdateSample(int x, int y)
 			int party = (int)(parts[i].y+0.5f);
 			if (partx != stackSampleX || party != stackSampleY)
 				continue;
-			if (sample.SParticleCount < 5)
-				stackIds[sample.SParticleCount] = i;
+			if (sample.SParticleCount < maxStackSample)
+				stackIds[sample.SParticleCount % 5] = i;
 			sample.SParticleCount++;
 		}
-		sample.StackIndexBegin = 0;
-		sample.StackIndexEnd = (sample.SParticleCount > 5) ? 5 : sample.SParticleCount;
+		sample.StackIndexEnd = sample.SParticleCount;
+		if (sample.StackIndexEnd > maxStackSample)
+			sample.StackIndexEnd = maxStackSample;
+		sample.StackIndexBegin = sample.StackIndexEnd - 5;
+		if (sample.StackIndexBegin < 0)
+			sample.StackIndexBegin = 0;
 		for (int i = sample.StackIndexBegin; i < sample.StackIndexEnd; i++)
 		{
-			sample.SParticles[i] = parts[stackIds[i]];
-			sample.SParticleIDs[i] = stackIds[i];
+			int partId = stackIds[i % 5];
+			sample.SParticles[i - sample.StackIndexBegin] = parts[partId];
+			sample.SParticleIDs[i - sample.StackIndexBegin] = partId;
 		}
+
+		sample.EffectiveStackEditDepth = stackEditDepth;
+		if (sample.EffectiveStackEditDepth < 0)
+			sample.EffectiveStackEditDepth = 0;
+		if (sample.EffectiveStackEditDepth >= sample.SParticleCount)
+			sample.EffectiveStackEditDepth = sample.SParticleCount - 1;
 
 		if (photons[y][x])
 		{
@@ -5386,6 +5400,7 @@ Simulation::~Simulation()
 Simulation::Simulation():
 	replaceModeSelected(0),
 	replaceModeFlags(0),
+	stackEditDepth(-1),
 	configToolSampleActive(false),
 	stackToolNotifShown(false),
 	debug_currentParticle(0),
