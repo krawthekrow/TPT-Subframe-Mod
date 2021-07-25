@@ -13,6 +13,7 @@ struct SimulationSample
 	int SParticleIDs[5] = {0};
 	int StackIndexBegin = 0;
 	int StackIndexEnd = 0;
+	int EffectiveStackEditDepth = 0;
 
 	// config tool info
 	int AdjacentPartsInfo[3][3] = {0};
@@ -30,4 +31,12 @@ struct SimulationSample
 
 	int NumParts = 0;
 	bool isMouseInSim = true;
+
+	// returns -1 if no particles exist in sample
+	int GetStackEditPartId()
+	{
+		if (!isMouseInSim || SParticleCount == 0)
+			return -1;
+		return SParticleIDs[EffectiveStackEditDepth - StackIndexBegin];
+	}
 };

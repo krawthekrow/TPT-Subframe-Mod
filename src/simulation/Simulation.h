@@ -54,6 +54,7 @@ public:
 	Particle stackReorderParts[NPART];
 
 	SimulationSample sample;
+	int stackEditDepth;
 	// configToolSample will change the stack sample
 	// but not the pmap sample during UpdateSample
 	bool configToolSampleActive;
@@ -134,6 +135,7 @@ public:
 	std::unique_ptr<GameSave> Save(bool includePressure, Rect<int> partR); // particle coordinates
 	void SaveSimOptions(GameSave &gameSave);
 	void UpdateSample(int x, int y);
+	int GetStackEditPartId(); // returns -1 if no particles exist in sample
 
 	std::unique_ptr<Snapshot> CreateSnapshot() const;
 	void Restore(const Snapshot &snap);
