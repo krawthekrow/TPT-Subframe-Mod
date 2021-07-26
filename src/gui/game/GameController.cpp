@@ -360,7 +360,9 @@ void GameController::DrawRect(int toolSelection, ui::Point point1, ui::Point poi
 	if (!activeTool)
 		return;
 	activeTool->Strength = 1.0f;
+	sim->BeforeStackEdit();
 	activeTool->DrawRect(sim, cBrush, point1, point2);
+	sim->AfterStackEdit();
 }
 
 void GameController::DrawLine(int toolSelection, ui::Point point1, ui::Point point2)
@@ -372,7 +374,9 @@ void GameController::DrawLine(int toolSelection, ui::Point point1, ui::Point poi
 	if (!activeTool)
 		return;
 	activeTool->Strength = 1.0f;
+	sim->BeforeStackEdit();
 	activeTool->DrawLine(sim, cBrush, point1, point2);
+	sim->AfterStackEdit();
 }
 
 void GameController::DrawFill(int toolSelection, ui::Point point)
@@ -384,7 +388,9 @@ void GameController::DrawFill(int toolSelection, ui::Point point)
 	if (!activeTool)
 		return;
 	activeTool->Strength = 1.0f;
+	sim->BeforeStackEdit();
 	activeTool->DrawFill(sim, cBrush, point);
+	sim->AfterStackEdit();
 }
 
 void GameController::DrawPoints(int toolSelection, ui::Point oldPos, ui::Point newPos, bool held)
@@ -406,13 +412,19 @@ void GameController::DrawPoints(int toolSelection, ui::Point oldPos, ui::Point n
 	if ((GetReplaceModeFlags() & STACK_MODE) && held)
 	{
 		if (oldPos != newPos)
+		{
+			sim->BeforeStackEdit();
 			activeTool->Draw(sim, cBrush, newPos);
+			sim->AfterStackEdit();
+		}
 		return;
 	}
+	sim->BeforeStackEdit();
 	if (!held)
 		activeTool->Draw(sim, cBrush, newPos);
 	else
 		activeTool->DrawLine(sim, cBrush, oldPos, newPos, true);
+	sim->AfterStackEdit();
 }
 
 bool GameController::LoadClipboard()
