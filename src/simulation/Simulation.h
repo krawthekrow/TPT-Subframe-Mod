@@ -192,6 +192,11 @@ public:
 	void RecalcFreeParticles(bool do_life_dec);
 	void FixSoapLinks(std::map<unsigned int, unsigned int> &soapList);
 	void ReloadParticleOrder();
+	// run BeforeStackEdit before drawing to target the stack edit depth;
+	// run AfterStackEdit when done
+	// (don't rely on autoreload since pmap and photons are corrupted)
+	void BeforeStackEdit();
+	void AfterStackEdit();
 	void CheckStacking();
 	void BeforeSim();
 	void AfterSim();
