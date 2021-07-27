@@ -144,6 +144,7 @@ public:
 	void SetLastTool(Tool * tool);
 	Tool *GetLastTool();
 	SimulationSample * GetSample();
+	int GetParticleDebugPosition();
 	int GetReplaceModeFlags();
 	void SetReplaceModeFlags(int flags);
 	void SetActiveColourPreset(int preset);
