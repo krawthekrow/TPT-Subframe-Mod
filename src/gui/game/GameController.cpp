@@ -1183,6 +1183,11 @@ SimulationSample * GameController::GetSample()
 	return &gameModel->GetSimulation()->sample;
 }
 
+int GameController::GetParticleDebugPosition()
+{
+	return gameModel->GetSimulation()->debug_currentParticle;
+}
+
 int GameController::GetReplaceModeFlags()
 {
 	return gameModel->GetSimulation()->replaceModeFlags;
