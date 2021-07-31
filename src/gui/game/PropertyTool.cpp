@@ -277,6 +277,8 @@ void PropertyWindow::SetProperty(bool warn)
 			tool->changeType = properties[property->GetOption().second].Name == "type";
 		} catch (const std::exception& ex) {
 			tool->validProperty = false;
+			Client::Ref().SetPref("Prop.Type", property->GetOption().second);
+			Client::Ref().SetPrefUnicode("Prop.Value", String(""));
 			if (warn)
 				new ErrorMessage("Could not set property", "Invalid value provided");
 			return;
