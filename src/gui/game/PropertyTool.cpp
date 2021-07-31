@@ -63,7 +63,41 @@ ui::Window(ui::Point(-1, -1), ui::Point(200, 87)),
 tool(tool_),
 sim(sim_)
 {
-	properties = Particle::GetProperties();
+	std::vector<StructProperty> origProperties = Particle::GetProperties();
+	properties.reserve(origProperties.size());
+	static ByteString firstProperties[] = {
+		"type", "ctype",
+		"life", "temp",
+		"tmp", "tmp2",
+	};
+	int numFirstProperties =
+		sizeof(firstProperties) / sizeof(*firstProperties);
+	for (int i = 0; i < numFirstProperties; i++)
+	{
+		for (int j = 0; j < int(origProperties.size()); j++)
+		{
+			if (origProperties[j].Name == firstProperties[i])
+			{
+				properties.push_back(origProperties[j]);
+				break;
+			}
+		}
+	}
+	for (int i = 0; i < int(origProperties.size()); i++)
+	{
+		bool inFirstProperties = false;
+		for (int j = 0; j < numFirstProperties; j++)
+		{
+			if (origProperties[i].Name == firstProperties[j])
+			{
+				inFirstProperties = true;
+				break;
+			}
+		}
+		if (inFirstProperties)
+			continue;
+		properties.push_back(origProperties[i]);
+	}
 
 	ui::Label * messageLabel = new ui::Label(ui::Point(4, 5), ui::Point(Size.X-8, 14), "Edit property");
 	messageLabel->SetTextColour(style::Colour::InformationTitle);
