@@ -22,33 +22,51 @@ static bool compareParts(Particle a, Particle b)
 }
 
 // parts must be sorted!
-void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point position)
+void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point position, ui::Point position2)
 {
 	if (parts.empty()) return;
-	bool samePos = true;
 	int partx = sim->parts[parts[0]].x;
 	int party = sim->parts[parts[0]].y;
-	int topleftx = partx;
-	int toplefty = party;
+	bool samePos = true;
+	ui::Point stackPos(partx, party);
 	for (size_t i = 1; i < parts.size(); i++)
 	{
 		Particle part = sim->parts[parts[i]];
 		if (part.x != partx || part.y != party)
 			samePos = false;
-		if (part.x < topleftx)
-			topleftx = part.x;
-		if (part.y < toplefty)
-			toplefty = part.y;
+		bool xgood = (position2.X > position.X) == (part.x > stackPos.X);
+		bool ygood = (position2.Y > position.Y) == (part.y > stackPos.Y);
+		if (xgood)
+			stackPos.X = part.x;
+		if (ygood)
+			stackPos.Y = part.y;
 	}
 	if (samePos)
 	{
+		ui::Point unstackDir(0, 1);
+		if (position2.X == position.X) {
+			if (position2.Y < position.Y)
+				unstackDir = ui::Point(0, -1);
+			if (position2.Y > position.Y)
+				unstackDir = ui::Point(0, 1);
+		}
+		if (position2.Y == position.Y) {
+			if (position2.X < position.X)
+				unstackDir = ui::Point(-1, 0);
+			if (position2.X > position.X)
+				unstackDir = ui::Point(1, 0);
+		}
 		unsigned int unstackLimit = parts.size();
 		for (size_t i = 1; i < parts.size(); i++){
-			if (party + i >= YRES || sim->pmap[party + i][partx] ||
-				sim->photons[party + i][partx])
+			int nx = partx + i * unstackDir.X, ny = party + i * unstackDir.Y;
+			if (nx < 0 || nx >= XRES || ny < 0 || ny >= YRES ||
+				sim->pmap[ny][nx] || sim->photons[ny][nx])
 			{
 				unstackLimit = i;
-				if (!sim->stackToolNotifShown || !(sim->stackToolNotifShownX == position.X && sim->stackToolNotifShownY == position.Y))
+				if (!sim->stackToolNotifShown || !(
+					sim->stackToolNotifShownX == position.X &&
+					sim->stackToolNotifShownY == position.Y
+				))
 				{
 					gameModel->Log("Warning: Not enough space to unstack fully.", false);
 					sim->stackToolNotifShown = true;
@@ -58,10 +76,14 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 				break;
 			}
 		}
+		bool reverseOrder = unstackDir.X < 0 || unstackDir.Y < 0;
 		for (size_t i = 0; i < unstackLimit; i++){
-			int partID = parts[parts.size() - unstackLimit + i];
+			int partidx = reverseOrder ?
+				(unstackLimit - i - 1) : (parts.size() - unstackLimit + i);
+			int partID = parts[partidx];
 			Particle *part = &sim->parts[partID];
-			part->y += i;
+			part->x += (int)i * unstackDir.X;
+			part->y += (int)i * unstackDir.Y;
 			int nx = (int)(part->x + 0.5f), ny = (int)(part->y + 0.5f);
 			int t = part->type;
 			if (sim->elements[t].Properties & TYPE_ENERGY)
@@ -84,8 +106,8 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 			sim->parts[parts[i]] = partobjs[i];
 		for (size_t i = 0; i < parts.size(); i++)
 		{
-			sim->parts[parts[i]].x = topleftx;
-			sim->parts[parts[i]].y = toplefty;
+			sim->parts[parts[i]].x = stackPos.X;
+			sim->parts[parts[i]].y = stackPos.Y;
 		}
 		delete[] partobjs;
 	}
@@ -110,7 +132,7 @@ void StackTool::Draw(Simulation *sim, Brush *cBrush, ui::Point position)
 					parts.push_back(i);
 			}
 		}
-		ProcessParts(sim, parts, position);
+		ProcessParts(sim, parts, position, position);
 	}
 }
 
@@ -181,7 +203,7 @@ void StackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui:
 				parts.push_back(i);
 		}
 	}
-	ProcessParts(sim, parts, position);
+	ProcessParts(sim, parts, position, position2);
 }
 
 void StackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2)
@@ -211,5 +233,5 @@ void StackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui:
 				parts.push_back(i);
 		}
 	}
-	ProcessParts(sim, parts, ui::Point(x1, y1));
+	ProcessParts(sim, parts, position, position2);
 }
