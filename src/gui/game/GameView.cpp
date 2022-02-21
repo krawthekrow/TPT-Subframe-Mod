@@ -1413,6 +1413,22 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 		}
 	}
 
+	switch(scan)
+	{
+	case SDL_SCANCODE_PAGEUP:
+		c->AdjustStackEditDepth(1);
+		return;
+	case SDL_SCANCODE_PAGEDOWN:
+		c->AdjustStackEditDepth(-1);
+		return;
+	case SDL_SCANCODE_X:
+		if (!ctrl)
+		{
+			c->AdjustStackEditDepth(shift ? -1 : 1);
+			return;
+		}
+	}
+
 	if (repeat)
 		return;
 	bool didKeyShortcut = true;
@@ -1603,18 +1619,7 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 	case SDL_SCANCODE_END:
 		c->SetStackEditDepth(c->GetSample()->SParticleCount - 1);
 		break;
-	case SDL_SCANCODE_PAGEUP:
-		c->AdjustStackEditDepth(1);
-		break;
-	case SDL_SCANCODE_PAGEDOWN:
-		c->AdjustStackEditDepth(-1);
-		break;
 	case SDL_SCANCODE_X:
-		if (!ctrl)
-		{
-			c->AdjustStackEditDepth(shift ? -1 : 1);
-			break;
-		}
 		if(ctrl)
 		{
 			selectMode = SelectCut;
