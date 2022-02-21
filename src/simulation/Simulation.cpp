@@ -5004,6 +5004,26 @@ void Simulation::AfterStackEdit()
 	RecalcFreeParticles(false);
 }
 
+int Simulation::GetStackEditParticleId(int x, int y)
+{
+	int stackCnt = 0;
+	int latesti = NPART;
+	for (int i = parts_lastActiveIndex; i >= 0; i--)
+	{
+		if (!parts[i].type)
+			continue;
+		int partx = (int)(parts[i].x+0.5f);
+		int party = (int)(parts[i].y+0.5f);
+		if (partx != x || party != y)
+			continue;
+		latesti = i;
+		if (stackCnt >= stackEditDepth)
+			break;
+		stackCnt++;
+	}
+	return latesti;
+}
+
 void Simulation::SimulateGoL()
 {
 	CGOL = 0;

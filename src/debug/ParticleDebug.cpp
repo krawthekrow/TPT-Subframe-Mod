@@ -82,7 +82,7 @@ void ParticleDebug::Debug(int mode, int x, int y)
 	}
 	else if (mode == 1)
 	{
-		if (x < 0 || x >= XRES || y < 0 || y >= YRES || !sim->pmap[y][x] || (i = ID(sim->pmap[y][x])) < debug_currentParticle)
+		if (x < 0 || x >= XRES || y < 0 || y >= YRES || !sim->pmap[y][x] || (i = sim->GetStackEditParticleId(x, y)) < debug_currentParticle)
 		{
 			i = NPART - 1;
 			logmessage = String::Build("Updated particles from #", debug_currentParticle, " to end, updated sim");

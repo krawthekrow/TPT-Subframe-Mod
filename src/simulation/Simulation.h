@@ -197,6 +197,7 @@ public:
 	// (don't rely on autoreload since pmap and photons are corrupted)
 	void BeforeStackEdit();
 	void AfterStackEdit();
+	int GetStackEditParticleId(int x, int y);
 	void CheckStacking();
 	void BeforeSim();
 	void AfterSim();
