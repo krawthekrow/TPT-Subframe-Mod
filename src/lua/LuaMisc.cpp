@@ -202,6 +202,20 @@ int setrecordinterval(lua_State* L)
 	return 0;
 }
 
+int set_bray_life_brightness_threshold(lua_State* L)
+{
+	auto *lsi = GetLSI();
+	int acount = lua_gettop(L);
+	if (acount == 0)
+	{
+		lua_pushinteger(L, lsi->ren->bray_life_brightness_threshold);
+		return 1;
+	}
+	int thres = luaL_checkint(L, 1);
+	lsi->ren->bray_life_brightness_threshold = thres;
+	return 0;
+}
+
 static int compatChunk(lua_State *L)
 {
 	lua_pushlstring(L, reinterpret_cast<const char *>(compat_lua), compat_lua_size);
@@ -299,6 +313,7 @@ void LuaMisc::Open(lua_State *L)
 		LFUNC(record),
 		LFUNC(record_subframe),
 		LFUNC(setrecordinterval),
+		LFUNC(set_bray_life_brightness_threshold),
 		LFUNC(debug),
 		LFUNC(autoreload_enable),
 		LFUNC(fpsCap),
