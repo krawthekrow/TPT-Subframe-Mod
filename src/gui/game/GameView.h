@@ -19,7 +19,7 @@ enum SelectMode
 
 enum HudParticleTextGlowType
 {
-	NONE, YELLOW, GREEN
+	NONE, YELLOW, BLUE
 };
 
 namespace ui

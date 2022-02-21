@@ -2165,7 +2165,7 @@ void GameView::drawHudParticleText(Graphics *g, StringBuilder sbText, int yoffse
 		rectb = 0x31;
 		alphamod = 1.3f;
 		break;
-	case HudParticleTextGlowType::GREEN:
+	case HudParticleTextGlowType::BLUE:
 		rectr = 0x32;
 		rectg = 0x30;
 		rectb = 0x5e;
@@ -2592,10 +2592,15 @@ void GameView::OnDraw()
 			}
 
 			HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE;
+			if (isConfigToolTarget)
+			{
+				sampleInfo << " \x0F\x01\x01\xEE<";
+				glowType = HudParticleTextGlowType::BLUE;
+			}
 			if (c->GetStackEditDepth() >= 0 && i == sample.EffectiveStackEditDepth)
-				glowType = HudParticleTextGlowType::YELLOW;
-			else if (isConfigToolTarget)
-				glowType = HudParticleTextGlowType::GREEN;
+			{
+				sampleInfo << " \x0F\xFF\xEE\x01<";
+			}
 			drawHudParticleText(g, sampleInfo, yoffset, alpha, wavelengthGfx, glowType);
 			yoffset += 13;
 		}
