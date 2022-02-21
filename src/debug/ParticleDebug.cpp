@@ -60,13 +60,10 @@ void ParticleDebug::Debug(int mode, int x, int y)
 		i = NPART - 1;
 		if (x >= 0 && x < XRES && y >= 0 && y < YRES)
 		{
-			if (sim->pmap[y][x] && ID(sim->pmap[y][x]) >= sim->debug_nextToUpdate)
+			int partid = sim->GetStackEditParticleId(x, y);
+			if (partid != NPART && partid >= sim->debug_nextToUpdate)
 			{
-				i = ID(sim->pmap[y][x]);
-			}
-			else if (sim->photons[y][x] && ID(sim->photons[y][x]) >= sim->debug_nextToUpdate)
-			{
-				i = ID(sim->photons[y][x]);
+				i = partid;
 			}
 		}
 	}
