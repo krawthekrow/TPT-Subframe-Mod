@@ -1265,6 +1265,20 @@ void GameController::SetStackEditDepth(int depth)
 	gameModel->GetSimulation()->stackEditDepth = depth;
 }
 
+void GameController::AdjustStackEditDepth(int ddepth)
+{
+	int stackSize = GetSample()->SParticleCount;
+	int currDepth = GetStackEditDepth();
+	if (currDepth >= stackSize)
+		currDepth = stackSize - 1;
+	int newDepth = currDepth + ddepth;
+	if (newDepth < -1)
+		newDepth = -1;
+	if (newDepth >= stackSize)
+		newDepth = stackSize - 1;
+	SetStackEditDepth(newDepth);
+}
+
 int GameController::GetReplaceModeFlags()
 {
 	return gameModel->GetSimulation()->replaceModeFlags;

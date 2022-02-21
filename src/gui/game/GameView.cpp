@@ -1482,21 +1482,6 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			c->ReloadSim();
 		break;
 	case SDL_SCANCODE_E:
-		if (!ctrl)
-		{
-			if (shift)
-			{
-				int newDepth = c->GetStackEditDepth() - 1;
-				if (newDepth < -1)
-					newDepth = -1;
-				c->SetStackEditDepth(newDepth);
-			}
-			else
-			{
-				c->SetStackEditDepth(c->GetStackEditDepth() + 1);
-			}
-			break;
-		}
 		c->OpenElementSearch();
 		break;
 	case SDL_SCANCODE_F:
@@ -1612,7 +1597,24 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			c->ToggleConfigTool();
 		}
 		break;
+	case SDL_SCANCODE_HOME:
+		c->SetStackEditDepth(0);
+		break;
+	case SDL_SCANCODE_END:
+		c->SetStackEditDepth(c->GetSample()->SParticleCount - 1);
+		break;
+	case SDL_SCANCODE_PAGEUP:
+		c->AdjustStackEditDepth(1);
+		break;
+	case SDL_SCANCODE_PAGEDOWN:
+		c->AdjustStackEditDepth(-1);
+		break;
 	case SDL_SCANCODE_X:
+		if (!ctrl)
+		{
+			c->AdjustStackEditDepth(shift ? -1 : 1);
+			break;
+		}
 		if(ctrl)
 		{
 			selectMode = SelectCut;
