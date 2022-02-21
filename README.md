@@ -154,8 +154,10 @@ v1.12:
 - Add Home, End, PageUp and PageDown shortcuts for stack edit.
 - Make subframe debugging stop on particle selected by stack edit.
 - Make stack tool stack and unstack based on cursor drag direction.
+- Make C switch out of config tool to the previously selected tool.
 - Make BRAY visible even when its life is low.
 - Display CONV's tmp as an element name next to its ctype in the debug HUD.
 - Indicate config tool and stack edit selections with a colored pointer.
+- Highlight currently configured property with colors instead of brackets.
 - Keep property tool on selected property when an invalid value is received.
 - Fix CRAY overlay color scheme in the config tool.
