@@ -612,31 +612,28 @@ bool GameController::KeyPress(int key, int scan, bool repeat, bool shift, bool c
 	bool ret = commandInterface->HandleEvent(KeyPressEvent{ { key, scan, repeat, shift, ctrl, alt } });
 	if (repeat)
 		return ret;
-	if (ret)
+	if (ret && !gameView->GetPlacingSave())
 	{
 		Simulation * sim = gameModel->GetSimulation();
-		if (!gameView->GetPlacingSave())
+		// Go right command
+		if (key == SDLK_RIGHT)
 		{
-			// Go right command
-			if (key == SDLK_RIGHT)
-			{
-				sim->player.comm = (int)(sim->player.comm)|0x02;
-			}
-			// Go left command
-			else if (key == SDLK_LEFT)
-			{
-				sim->player.comm = (int)(sim->player.comm)|0x01;
-			}
-			// Use element command
-			else if (key == SDLK_DOWN && ((int)(sim->player.comm)&0x08)!=0x08)
-			{
-				sim->player.comm = (int)(sim->player.comm)|0x08;
-			}
-			// Jump command
-			else if (key == SDLK_UP && ((int)(sim->player.comm)&0x04)!=0x04)
-			{
-				sim->player.comm = (int)(sim->player.comm)|0x04;
-			}
+			sim->player.comm = (int)(sim->player.comm)|0x02;
+		}
+		// Go left command
+		else if (key == SDLK_LEFT)
+		{
+			sim->player.comm = (int)(sim->player.comm)|0x01;
+		}
+		// Use element command
+		else if (key == SDLK_DOWN && ((int)(sim->player.comm)&0x08)!=0x08)
+		{
+			sim->player.comm = (int)(sim->player.comm)|0x08;
+		}
+		// Jump command
+		else if (key == SDLK_UP && ((int)(sim->player.comm)&0x04)!=0x04)
+		{
+			sim->player.comm = (int)(sim->player.comm)|0x04;
 		}
 
 		// Go right command
