@@ -1417,15 +1417,19 @@ void GameView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			switch (key)
 			{
 			case SDLK_RIGHT:
+			case SDLK_d:
 				TranslateSave({  1,  0 });
 				return;
 			case SDLK_LEFT:
+			case SDLK_a:
 				TranslateSave({ -1,  0 });
 				return;
 			case SDLK_UP:
+			case SDLK_w:
 				TranslateSave({  0, -1 });
 				return;
 			case SDLK_DOWN:
+			case SDLK_s:
 				TranslateSave({  0,  1 });
 				return;
 			}
