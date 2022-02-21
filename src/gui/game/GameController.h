@@ -150,6 +150,7 @@ public:
 	SimulationSample * GetSample();
 	int GetParticleDebugPosition();
 	ConfigTool * GetActiveConfigTool();
+	void ToggleConfigTool();
 	int GetReplaceModeFlags();
 	void SetReplaceModeFlags(int flags);
 	void SetActiveColourPreset(int preset);
