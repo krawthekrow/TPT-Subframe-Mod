@@ -2441,8 +2441,19 @@ void GameView::OnDraw()
 						// Do nothing, ctype is meaningless for these elements
 					}
 					// Some elements store extra LIFE info in upper bits of ctype, instead of tmp/tmp2
-					else if (type == PT_CRAY || type == PT_DRAY || type == PT_CONV || type == PT_LDTC)
+					else if (type == PT_CRAY || type == PT_DRAY || type == PT_LDTC)
 						sampleInfo << " (" << c->ElementResolve(TYP(ctype), ID(ctype)) << ")";
+					else if (type == PT_CONV)
+					{
+						sampleInfo << " (";
+						String tmpElemName = c->ElementResolve(
+							TYP(sparticle.tmp), ID(sparticle.tmp)
+						);
+						if (tmpElemName != "")
+							sampleInfo << tmpElemName << " > ";
+						sampleInfo << c->ElementResolve(TYP(ctype), ID(ctype));
+						sampleInfo << ")";
+					}
 					else if (type == PT_CLNE || type == PT_BCLN || type == PT_PCLN || type == PT_PBCN || type == PT_DTEC)
 						sampleInfo << " (" << c->ElementResolve(ctype, sparticle.tmp) << ")";
 					else if (c->IsValidElement(ctype) && type != PT_GLOW && type != PT_WIRE && type != PT_SOAP && type != PT_LITH)
