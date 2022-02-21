@@ -236,6 +236,7 @@ Renderer::Renderer(Simulation *newSim):
 	debugLines(false),
 	sampleColor(0xFFFFFFFF),
     foundElements(0),
+	bray_life_brightness_threshold(0),
 	mousePos(0, 0),
 	zoomWindowPosition(0, 0),
 	zoomScopePosition(0, 0),
