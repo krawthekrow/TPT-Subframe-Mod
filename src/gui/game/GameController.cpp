@@ -1235,6 +1235,14 @@ ConfigTool * GameController::GetActiveConfigTool()
 	else return NULL;
 }
 
+void GameController::ToggleConfigTool()
+{
+	if (gameModel->GetActiveToolset() == TS_CONFIG)
+		RestoreLastRegularActiveTool();
+	else
+		SetActiveTool(0, "DEFAULT_UI_CONFIG");
+}
+
 int GameController::GetReplaceModeFlags()
 {
 	return gameModel->GetSimulation()->replaceModeFlags;
