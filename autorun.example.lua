@@ -5,6 +5,8 @@ tpt.brushy = 0
 -- change DRAY/DTEC colors to distinguish them from ARAY
 elem.property(elem.DEFAULT_PT_DTEC, "Colour", 0xFE720F)
 elem.property(elem.DEFAULT_PT_DRAY, "Colour", 0xFFFF00)
+-- make low-life BRAY brighter
+tpt.set_bray_life_brightness_threshold(100)
 
 -- enable subframe debugging
 tpt.setdebug(0x8)

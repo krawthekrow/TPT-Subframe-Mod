@@ -1516,6 +1516,7 @@ Renderer::Renderer(Graphics * g, Simulation * sim):
 	sampleColor(0xFFFFFFFF),
 	findingElement(0),
     foundElements(0),
+	bray_life_brightness_threshold(0),
 	mousePos(0, 0),
 	zoomWindowPosition(0, 0),
 	zoomScopePosition(0, 0),

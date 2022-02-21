@@ -59,6 +59,7 @@ public:
 	pixel sampleColor;
 	int findingElement;
 	int foundElements;
+	int bray_life_brightness_threshold;
 
 	//Mouse position for debug information
 	ui::Point mousePos;

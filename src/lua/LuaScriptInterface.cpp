@@ -292,6 +292,7 @@ LuaScriptInterface::LuaScriptInterface(GameController * c, GameModel * m):
 		{"set_clipboard", &platform_clipboardPaste},
 		{"setdrawcap", &luatpt_setdrawcap},
 		{"perfectCircleBrush", &luatpt_perfectCircle},
+		{"set_bray_life_brightness_threshold", &luatpt_set_bray_life_brightness_threshold},
 		{NULL,NULL}
 	};
 

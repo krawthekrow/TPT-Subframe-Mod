@@ -1404,4 +1404,17 @@ int luatpt_setrecordinterval(lua_State* l)
 	return 0;
 }
 
+int luatpt_set_bray_life_brightness_threshold(lua_State* l)
+{
+	int acount = lua_gettop(l);
+	if (acount == 0)
+	{
+		lua_pushinteger(l, luacon_ren->bray_life_brightness_threshold);
+		return 1;
+	}
+	int thres = luaL_checkint(l, 1);
+	luacon_ren->bray_life_brightness_threshold = thres;
+	return 0;
+}
+
 #endif
