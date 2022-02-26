@@ -1706,6 +1706,8 @@ void Simulation::kill_part(int i)//kills particle number i
 {
 	if (i < 0 || i >= NPART)
 		return;
+
+	debug_interestingChangeOccurred = true;
 	
 	int x = (int)(parts[i].x + 0.5f);
 	int y = (int)(parts[i].y + 0.5f);
@@ -1741,6 +1743,8 @@ void Simulation::kill_part(int i)//kills particle number i
 // Returns true if the particle was killed
 bool Simulation::part_change_type(int i, int x, int y, int t)
 {
+	debug_interestingChangeOccurred = true;
+
 	if (x<0 || y<0 || x>=XRES || y>=YRES || i>=NPART || t<0 || t>=PT_NUM || !parts[i].type)
 		return false;
 
@@ -1787,6 +1791,7 @@ bool Simulation::part_change_type(int i, int x, int y, int t)
 int Simulation::create_part(int p, int x, int y, int t, int v)
 {
 	int i, oldType = PT_NONE;
+	debug_interestingChangeOccurred = true;
 
 	auto &sd = SimulationData::CRef();
 	auto &elements = sd.elements;
