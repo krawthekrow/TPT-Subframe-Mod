@@ -139,6 +139,7 @@ static int update(UPDATE_FUNC_ARGS)
 
 					if (boolMode)
 					{
+						sim->debug_interestingChangeOccurred = true;
 						parts[ID(r)].life = 4;
 						parts[ID(r)].ctype = TYP(r);
 						sim->part_change_type(ID(r), x + rx, y + ry, PT_SPRK);
@@ -156,6 +157,7 @@ static int update(UPDATE_FUNC_ARGS)
 							parts[ID(rr)].ctype;
 						while (TYP(r) == PT_FILT)
 						{
+							sim->debug_interestingChangeOccurred = true;
 							parts[ID(r)].ctype = photonWl;
 							nx += rx;
 							ny += ry;
