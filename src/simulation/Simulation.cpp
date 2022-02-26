@@ -1224,6 +1224,8 @@ int Simulation::try_move(int i, int x, int y, int nx, int ny)
 		return 0;
 	}
 
+	debug_interestingChangeOccurred = true;
+
 	if (e == 2) //if occupy same space
 	{
 		switch (parts[i].type)
