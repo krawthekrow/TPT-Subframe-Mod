@@ -193,6 +193,7 @@ public:
 	bool IsFrameComplete();
 	bool AreParticlesInSubframeOrder();
 	void TransformPlaceSave(Mat2<int> transform, Vec2<int> nudge);
+	void ReRenderSave();
 	bool MouseInZoom(ui::Point position);
 	ui::Point PointTranslate(ui::Point point);
 	ui::Point PointTranslateNoClamp(ui::Point point);

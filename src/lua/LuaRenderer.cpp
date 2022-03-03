@@ -22,6 +22,7 @@ static int renderModes(lua_State *L)
 			lua_pop(L, 1);
 		}
 		lsi->ren->SetRenderMode(renderModes);
+		lsi->gameController->ReRenderSave();
 		return 0;
 	}
 	else
@@ -110,6 +111,7 @@ static int displayModes(lua_State *L)
 			lua_pop(L, 1);
 		}
 		lsi->ren->SetDisplayMode(displayModes);
+		lsi->gameController->ReRenderSave();
 		return 0;
 	}
 	else
@@ -134,6 +136,7 @@ static int colorMode(lua_State *L)
 	{
 		luaL_checktype(L, 1, LUA_TNUMBER);
 		lsi->ren->SetColourMode(lua_tointeger(L, 1));
+		lsi->gameController->ReRenderSave();
 		return 0;
 	}
 	else
@@ -155,6 +158,7 @@ static int decorations(lua_State *L)
 	int decostate = lua_toboolean(L, 1);
 	lsi->gameModel->SetDecoration(decostate);
 	lsi->gameModel->UpdateQuickOptions();
+	lsi->gameController->ReRenderSave();
 	return 0;
 }
 
