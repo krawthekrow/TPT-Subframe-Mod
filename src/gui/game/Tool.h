@@ -84,13 +84,36 @@ public:
 
 class StackTool: public Tool
 {
+	class DeleteStackTool : public Tool
+	{
+		StackTool * stackTool;
+		Tool * clearTool;
+	public:
+		DeleteStackTool(StackTool *stackTool_):
+		Tool(0, "", "", 0, 0, 0, "DEFAULT_UI_STACK_DELETE", NULL),
+		stackTool(stackTool_),
+		clearTool(NULL)
+		{
+		}
+		virtual ~DeleteStackTool() {}
+		void SetClearTool(Tool *clearTool_) { clearTool = clearTool_; }
+		virtual void Click(Simulation * sim, Brush * brush, ui::Point position){ }
+		virtual void Draw(Simulation * sim, Brush * brush, ui::Point position);
+		virtual void DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging = false);
+		virtual void DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2);
+		virtual void DrawFill(Simulation * sim, Brush * brush, ui::Point position);
+	};
+
 	GameModel * gameModel;
 public:
+	DeleteStackTool deleteStackTool;
 	StackTool(GameModel *model):
 	Tool(0, "STCK", "Stack or unstack particles.", 0xff, 0xff, 0, "DEFAULT_UI_STACK", NULL),
-	gameModel(model)
+	gameModel(model),
+	deleteStackTool(DeleteStackTool(this))
 	{
 	}
+	void SetClearTool(Tool *clearTool) { deleteStackTool.SetClearTool(clearTool); }
 	virtual ~StackTool() {}
 	void ProcessParts(Simulation * sim, std::vector<int> &parts, ui::Point position, ui::Point position2);
 	virtual void Click(Simulation * sim, Brush * brush, ui::Point position) { }

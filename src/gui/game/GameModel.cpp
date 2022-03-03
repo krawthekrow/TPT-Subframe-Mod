@@ -415,6 +415,13 @@ void GameModel::BuildMenus()
 	configToolset[2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
 	configToolset[3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
 
+	StackTool *stackTool = (StackTool*)GetToolFromIdentifier("DEFAULT_UI_STACK");
+	stackTool->SetClearTool(GetToolFromIdentifier("DEFAULT_PT_NONE"));
+	stackToolToolset[0] = stackTool;
+	stackToolToolset[1] = &stackTool->deleteStackTool;
+	stackToolToolset[2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
+	stackToolToolset[3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
+
 	regularToolset[0] = GetToolFromIdentifier(activeToolIdentifiers[0]);
 	regularToolset[1] = GetToolFromIdentifier(activeToolIdentifiers[1]);
 	regularToolset[2] = GetToolFromIdentifier(activeToolIdentifiers[2]);
@@ -943,7 +950,9 @@ void GameModel::SetActiveTool(int selection, Tool * tool)
 	sim->configToolSampleActive = false;
 	if (tool->GetIdentifier() == "DEFAULT_UI_CONFIG")
 		activeTools = configToolset;
-	else if (activeTools == configToolset)
+	else if (tool->GetIdentifier() == "DEFAULT_UI_STACK")
+		activeTools = stackToolToolset;
+	else
 		activeTools = regularToolset;
 	activeTools[selection] = tool;
 	notifyActiveToolsChanged();
