@@ -235,3 +235,114 @@ void StackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui:
 	}
 	ProcessParts(sim, parts, position, position2);
 }
+
+void StackTool::DeleteStackTool::Draw(Simulation *sim, Brush *cBrush, ui::Point position)
+{
+	if (cBrush)
+	{
+		int radiusX = cBrush->GetRadius().X, radiusY = cBrush->GetRadius().Y, sizeX = cBrush->GetSize().X, sizeY = cBrush->GetSize().Y;
+		unsigned char *bitmap = cBrush->GetBitmap();
+		for (int i=0; i<=sim->parts_lastActiveIndex; i++)
+		{
+			if (sim->parts[i].type)
+			{
+				int partx = (int)(sim->parts[i].x+0.5f);
+				int party = (int)(sim->parts[i].y+0.5f);
+				int partbmpx = partx - position.X + radiusX;
+				int partbmpy = party - position.Y + radiusY;
+				if (partbmpx >= 0 && partbmpx < sizeX && partbmpy >= 0 && partbmpy < sizeY && bitmap[partbmpy * sizeX + partbmpx])
+					sim->kill_part(i);
+			}
+		}
+	}
+}
+
+void StackTool::DeleteStackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2, bool dragging)
+{
+	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
+	bool reverseXY = abs(y2-y1) > abs(x2-x1);
+	int x, y, dx, dy, sy, rx = cBrush->GetRadius().X, ry = cBrush->GetRadius().Y;
+	float e = 0.0f, de;
+	if (reverseXY)
+	{
+		y = x1;
+		x1 = y1;
+		y1 = y;
+		y = x2;
+		x2 = y2;
+		y2 = y;
+	}
+	if (x1 > x2)
+	{
+		y = x1;
+		x1 = x2;
+		x2 = y;
+		y = y1;
+		y1 = y2;
+		y2 = y;
+	}
+	dx = x2 - x1;
+	dy = abs(y2 - y1);
+	if (dx)
+		de = dy/(float)dx;
+	else
+		de = 0.0f;
+	y = y1;
+	sy = (y1<y2) ? 1 : -1;
+	for (x=x1; x<=x2; x++)
+	{
+		if (reverseXY)
+			Draw(sim, cBrush, ui::Point(y, x));
+		else
+			Draw(sim, cBrush, ui::Point(x, y));
+		e += de;
+		if (e >= 0.5f)
+		{
+			y += sy;
+			if (!(rx+ry) && ((y1<y2) ? (y<=y2) : (y>=y2)))
+			{
+				if (reverseXY)
+					Draw(sim, cBrush, ui::Point(y, x));
+				else
+					Draw(sim, cBrush, ui::Point(x, y));
+			}
+			e -= 1.0f;
+		}
+	}
+}
+
+void StackTool::DeleteStackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2)
+{
+	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
+	int i, j;
+	if (x1>x2)
+	{
+		i = x2;
+		x2 = x1;
+		x1 = i;
+	}
+	if (y1>y2)
+	{
+		j = y2;
+		y2 = y1;
+		y1 = j;
+	}
+	for (int i=0; i<=sim->parts_lastActiveIndex; i++)
+	{
+		if (sim->parts[i].type)
+		{
+			int partx = (int)(sim->parts[i].x+0.5f);
+			int party = (int)(sim->parts[i].y+0.5f);
+			if (partx >= x1 && partx <= x2 && party >= y1 && party <= y2)
+				sim->kill_part(i);
+		}
+	}
+}
+
+void StackTool::DeleteStackTool::DrawFill(Simulation * sim, Brush * cbrush, ui::Point position)
+{
+	// create a heatmap of particles. Index is: Y*XRES + X
+	clearTool->DrawFill(sim, cbrush, position);
+	// re-implement flood fill and kill stacks that it encounters.
+	
+}

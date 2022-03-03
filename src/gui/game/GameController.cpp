@@ -708,7 +708,7 @@ bool GameController::KeyPress(int key, int scan, bool repeat, bool shift, bool c
 			case SDL_SCANCODE_S:
 				if (shift)
 				{
-					SetActiveTool(0, "DEFAULT_UI_STACK");
+					ToggleStackTool();
 					break;
 				}
 				gameView->BeginStampSelection();
@@ -1229,6 +1229,14 @@ void GameController::ToggleConfigTool()
 		SetActiveMenu(gameModel->GetActiveMenu());
 	else
 		SetActiveTool(0, "DEFAULT_UI_CONFIG");
+}
+
+void GameController::ToggleStackTool()
+{
+	if (GetActiveTool(0)->GetIdentifier() == "DEFAULT_UI_STACK")
+		SetActiveMenu(gameModel->GetActiveMenu());
+	else
+		SetActiveTool(0, "DEFAULT_UI_STACK");
 }
 
 int GameController::GetStackEditDepth()
