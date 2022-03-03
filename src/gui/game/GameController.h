@@ -134,6 +134,7 @@ public:
 	int GetParticleDebugPosition();
 	ConfigTool * GetActiveConfigTool();
 	void ToggleConfigTool();
+	void ToggleStackTool();
 	int GetStackEditDepth();
 	void SetStackEditDepth(int depth);
 	void AdjustStackEditDepth(int ddepth);
