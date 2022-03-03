@@ -800,6 +800,11 @@ void GameView::NotifyPausedChanged(GameModel * sender)
 	pauseButton->SetToggleState(sender->GetPaused() && !(sender->GetSubframeMode()));
 }
 
+void GameView::NotifyDecorationChanged(GameModel * sender)
+{
+	c->ReRenderSave();
+}
+
 void GameView::NotifyToolTipChanged(GameModel * sender)
 {
 	toolTip = sender->GetToolTip();
@@ -2023,7 +2028,7 @@ void GameView::NotifyPlaceSaveChanged(GameModel * sender)
 	placeSaveOffset = ui::Point(0, 0);
 	if(sender->GetPlaceSave())
 	{
-		placeSaveThumb = SaveRenderer::Ref().Render(sender->GetPlaceSave(), true, true, sender->GetRenderer());
+		placeSaveThumb = SaveRenderer::Ref().Render(sender->GetPlaceSave(), sender->GetRenderer()->decorations_enable, true, sender->GetRenderer());
 		selectMode = PlaceSave;
 		selectPoint2 = mousePosition;
 	}

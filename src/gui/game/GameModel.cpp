@@ -857,6 +857,7 @@ void GameModel::AddObserver(GameView * observer){
 	observer->NotifySimulationChanged(this);
 	observer->NotifyRendererChanged(this);
 	observer->NotifyPausedChanged(this);
+	observer->NotifyDecorationChanged(this);
 	observer->NotifySaveChanged(this);
 	observer->NotifyBrushChanged(this);
 	observer->NotifyMenuListChanged(this);
@@ -1588,7 +1589,7 @@ void GameModel::notifyDecorationChanged()
 {
 	for (size_t i = 0; i < observers.size(); i++)
 	{
-		//observers[i]->NotifyPausedChanged(this);
+		observers[i]->NotifyDecorationChanged(this);
 	}
 }
 

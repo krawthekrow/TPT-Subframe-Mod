@@ -2660,6 +2660,7 @@ int LuaScriptInterface::renderer_renderModes(lua_State * l)
 			lua_pop(l, 1);
 		}
 		luacon_ren->SetRenderMode(renderModes);
+		luacon_controller->ReRenderSave();
 		return 0;
 	}
 	else
@@ -2693,6 +2694,7 @@ int LuaScriptInterface::renderer_displayModes(lua_State * l)
 			lua_pop(l, 1);
 		}
 		luacon_ren->SetDisplayMode(displayModes);
+		luacon_controller->ReRenderSave();
 		return 0;
 	}
 	else
@@ -2716,6 +2718,7 @@ int LuaScriptInterface::renderer_colourMode(lua_State * l)
 	{
 		luaL_checktype(l, 1, LUA_TNUMBER);
 		luacon_ren->SetColourMode(lua_tointeger(l, 1));
+		luacon_controller->ReRenderSave();
 		return 0;
 	}
 	else
@@ -2731,6 +2734,7 @@ int LuaScriptInterface::renderer_decorations(lua_State * l)
 	if(args)
 	{
 		luacon_ren->decorations_enable = lua_toboolean(l, 1);
+		luacon_controller->ReRenderSave();
 		return 0;
 	}
 	else
