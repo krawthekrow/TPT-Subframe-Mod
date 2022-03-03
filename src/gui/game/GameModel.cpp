@@ -952,7 +952,7 @@ void GameModel::SetActiveTool(int selection, Tool * tool)
 		activeTools = configToolset;
 	else if (tool->GetIdentifier() == "DEFAULT_UI_STACK")
 		activeTools = stackToolToolset;
-	else
+	else if (activeTools != decoToolset)
 		activeTools = regularToolset;
 	activeTools[selection] = tool;
 	notifyActiveToolsChanged();
