@@ -447,6 +447,12 @@ void GameController::TransformPlaceSave(Mat2<int> transform, Vec2<int> nudge)
 	gameModel->TransformPlaceSave(transform, nudge);
 }
 
+void GameController::ReRenderSave()
+{
+	if (gameView->GetSelectMode() == SelectMode::PlaceSave)
+		gameView->NotifyPlaceSaveChanged(gameModel);
+}
+
 void GameController::ToolClick(int toolSelection, ui::Point point)
 {
 	Simulation * sim = gameModel->GetSimulation();
@@ -890,6 +896,7 @@ void GameController::LoadRenderPreset(int presetNum)
 	renderer->SetRenderMode(preset.RenderModes);
 	renderer->SetDisplayMode(preset.DisplayModes);
 	renderer->SetColourMode(preset.ColourMode);
+	ReRenderSave();
 }
 
 void GameController::Update()
