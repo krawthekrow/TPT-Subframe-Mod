@@ -60,10 +60,12 @@ GameModel::GameModel():
 	sim->useLuaCallbacks = true;
 	ren = new Renderer(sim);
 
-	activeTools = &regularToolset[0];
+	activeToolset = TS_REGULAR;
 
-	std::fill(decoToolset.begin(), decoToolset.end(), nullptr);
-	std::fill(regularToolset.begin(), regularToolset.end(), nullptr);
+	for (int i = 0; i < TS_TOTAL; i++)
+	{
+		std::fill(toolsets[i].begin(), toolsets[i].end(), nullptr);
+	}
 
 	//Default render prefs
 	ren->SetRenderMode({
@@ -229,14 +231,10 @@ void GameModel::BuildMenus()
 		lastMenu = activeMenu;
 
 	std::array<ByteString, NUM_TOOLINDICES> activeToolIdentifiers;
-	if(regularToolset[0])
-		activeToolIdentifiers[0] = regularToolset[0]->Identifier;
-	if(regularToolset[1])
-		activeToolIdentifiers[1] = regularToolset[1]->Identifier;
-	if(regularToolset[2])
-		activeToolIdentifiers[2] = regularToolset[2]->Identifier;
-	if(regularToolset[3])
-		activeToolIdentifiers[3] = regularToolset[3]->Identifier;
+	for (int i = 0; i < NUM_TOOLINDICES; i++) {
+		if(toolsets[TS_REGULAR][i])
+			activeToolIdentifiers[i] = toolsets[TS_REGULAR][i]->Identifier;
+	}
 
 	//Empty current menus
 	for (size_t i = 0; i < menuList.size(); i++)
@@ -393,27 +391,27 @@ void GameModel::BuildMenus()
 	menuList[SC_DECO]->AddTool(new DecorationTool(*ren, DECO_CLEAR, "CLR", "Erase any set decoration.", 0x000000_rgb, "DEFAULT_DECOR_CLR"));
 	menuList[SC_DECO]->AddTool(new DecorationTool(*ren, DECO_DRAW, "SET", "Draw decoration (No blending).", 0x000000_rgb, "DEFAULT_DECOR_SET"));
 	SetColourSelectorColour(colour); // update tool colors
-	decoToolset[0] = GetToolFromIdentifier("DEFAULT_DECOR_SET");
-	decoToolset[1] = GetToolFromIdentifier("DEFAULT_DECOR_CLR");
-	decoToolset[2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
-	decoToolset[3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
+	toolsets[TS_DECO][0] = GetToolFromIdentifier("DEFAULT_DECOR_SET");
+	toolsets[TS_DECO][1] = GetToolFromIdentifier("DEFAULT_DECOR_CLR");
+	toolsets[TS_DECO][2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
+	toolsets[TS_DECO][3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
 
-	regularToolset[0] = GetToolFromIdentifier(activeToolIdentifiers[0]);
-	regularToolset[1] = GetToolFromIdentifier(activeToolIdentifiers[1]);
-	regularToolset[2] = GetToolFromIdentifier(activeToolIdentifiers[2]);
-	regularToolset[3] = GetToolFromIdentifier(activeToolIdentifiers[3]);
+	toolsets[TS_REGULAR][0] = GetToolFromIdentifier(activeToolIdentifiers[0]);
+	toolsets[TS_REGULAR][1] = GetToolFromIdentifier(activeToolIdentifiers[1]);
+	toolsets[TS_REGULAR][2] = GetToolFromIdentifier(activeToolIdentifiers[2]);
+	toolsets[TS_REGULAR][3] = GetToolFromIdentifier(activeToolIdentifiers[3]);
 
 	//Set default tools
-	if (!regularToolset[0])
-		regularToolset[0] = GetToolFromIdentifier("DEFAULT_PT_DUST");
-	if (!regularToolset[1])
-		regularToolset[1] = GetToolFromIdentifier("DEFAULT_PT_NONE");
-	if (!regularToolset[2])
-		regularToolset[2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
-	if (!regularToolset[3])
-		regularToolset[3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
+	if (!toolsets[TS_REGULAR][0])
+		toolsets[TS_REGULAR][0] = GetToolFromIdentifier("DEFAULT_PT_DUST");
+	if (!toolsets[TS_REGULAR][1])
+		toolsets[TS_REGULAR][1] = GetToolFromIdentifier("DEFAULT_PT_NONE");
+	if (!toolsets[TS_REGULAR][2])
+		toolsets[TS_REGULAR][2] = GetToolFromIdentifier("DEFAULT_UI_SAMPLE");
+	if (!toolsets[TS_REGULAR][3])
+		toolsets[TS_REGULAR][3] = GetToolFromIdentifier("DEFAULT_PT_NONE");
 
-	lastTool = activeTools[0];
+	lastTool = toolsets[activeToolset][0];
 
 	//Set default menu
 	activeMenu = SC_POWDERS;
@@ -880,21 +878,15 @@ void GameModel::SetActiveMenu(int menuID)
 	notifyToolListChanged();
 
 	if(menuID == SC_DECO)
-	{
-		if(activeTools != &decoToolset[0])
-		{
-			activeTools = &decoToolset[0];
-			notifyActiveToolsChanged();
-		}
-	}
+		SetColourSelectorVisibility(true);
 	else
-	{
-		if(activeTools != &regularToolset[0])
-		{
-			activeTools = &regularToolset[0];
-			notifyActiveToolsChanged();
-		}
-	}
+		SetColourSelectorVisibility(false);
+}
+
+void GameModel::SetActiveToolset(int toolsetID)
+{
+	activeToolset = toolsetID;
+	notifyActiveToolsChanged();
 }
 
 std::vector<Tool*> GameModel::GetUnlistedTools()
@@ -912,6 +904,11 @@ int GameModel::GetActiveMenu()
 	return activeMenu;
 }
 
+int GameModel::GetActiveToolset()
+{
+	return activeToolset;
+}
+
 //Get an element tool from an element ID
 Tool * GameModel::GetElementTool(int elementID)
 {
@@ -925,12 +922,16 @@ Tool * GameModel::GetElementTool(int elementID)
 
 Tool * GameModel::GetActiveTool(int selection)
 {
-	return activeTools[selection];
+	return toolsets[activeToolset][selection];
 }
 
 void GameModel::SetActiveTool(int selection, Tool * tool)
 {
-	activeTools[selection] = tool;
+	if (tool->Identifier.BeginsWith("DEFAULT_DECOR_"))
+		SetActiveToolset(TS_DECO);
+	else
+		SetActiveToolset(TS_REGULAR);
+	toolsets[activeToolset][selection] = tool;
 	notifyActiveToolsChanged();
 }
 
@@ -1175,7 +1176,7 @@ void GameModel::SetActiveColourPreset(size_t preset)
 		activeColourPreset = preset+1;
 	else
 	{
-		activeTools[0] = GetToolFromIdentifier("DEFAULT_DECOR_SET");
+		toolsets[TS_DECO][0] = GetToolFromIdentifier("DEFAULT_DECOR_SET");
 		notifyActiveToolsChanged();
 	}
 	notifyColourActivePresetChanged();

@@ -35,6 +35,10 @@ constexpr int SC_CRACKER   = 16;
 constexpr int SC_CRACKER2  = 17;
 constexpr int SC_TOTAL     = 16;
 
+constexpr int TS_REGULAR   = 0;
+constexpr int TS_DECO      = 1;
+constexpr int TS_TOTAL     = 2;
+
 constexpr int O_WL_WALLELEC     = 122;
 constexpr int O_WL_EWALL        = 123;
 constexpr int O_WL_DETECT       = 124;
