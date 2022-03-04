@@ -1,4 +1,5 @@
 #pragma once
+#include "simulation/SimulationData.h"
 #include "gui/interface/Colour.h"
 #include "client/User.h"
 #include "gui/interface/Point.h"
@@ -69,14 +70,14 @@ private:
 	std::vector<Menu*> menuList;
 	std::vector<QuickOption*> quickOptions;
 	int activeMenu;
+	int lastRegularMenu;
 	int currentBrush;
 	std::vector<std::unique_ptr<Brush>> brushList;
 	std::unique_ptr<SaveInfo> currentSave;
 	std::unique_ptr<SaveFile> currentFile;
 	Tool * lastTool;
-	Tool ** activeTools;
-	std::array<Tool *, NUM_TOOLINDICES> decoToolset;
-	std::array<Tool *, NUM_TOOLINDICES> regularToolset;
+	int activeToolset;
+	std::array<Tool *, NUM_TOOLINDICES> toolsets[TS_TOTAL];
 	User currentUser;
 	float toolStrength;
 	std::deque<HistoryEntry> history;
@@ -226,6 +227,8 @@ public:
 	std::vector<QuickOption*> GetQuickOptions();
 	void SetActiveMenu(int menuID);
 	int GetActiveMenu();
+	void SetActiveToolset(int toolsetID);
+	int GetActiveToolset();
 	void FrameStep(int frames);
 	User GetUser();
 	void SetUser(User user);

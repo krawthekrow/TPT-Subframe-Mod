@@ -32,6 +32,10 @@ constexpr int SC_TOOL      = 13;
 constexpr int SC_FAVORITES = 14;
 constexpr int SC_DECO      = 15;
 
+constexpr int TS_REGULAR   = 0;
+constexpr int TS_DECO      = 1;
+constexpr int TS_TOTAL     = 2;
+
 constexpr int O_WL_WALLELEC     = 122;
 constexpr int O_WL_EWALL        = 123;
 constexpr int O_WL_DETECT       = 124;
