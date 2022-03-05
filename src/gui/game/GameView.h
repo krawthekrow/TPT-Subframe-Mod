@@ -57,7 +57,6 @@ private:
 	bool windTool;
 	int toolIndex;
 	int currentSaveType;
-	int lastMenu;
 
 	int toolTipPresence;
 	String toolTip;

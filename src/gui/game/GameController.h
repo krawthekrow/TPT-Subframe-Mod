@@ -130,6 +130,7 @@ public:
 	void SetDebugFlags(unsigned int flags) { debugFlags = flags; }
 	unsigned int GetDebugFlags() const { return debugFlags; }
 	void SetActiveMenu(int menuID);
+	void RestoreLastRegularActiveTool();
 	std::vector<Menu*> GetMenuList();
 	int GetNumMenus(bool onlyEnabled);
 	void RebuildFavoritesMenu();
