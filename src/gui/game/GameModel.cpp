@@ -226,9 +226,6 @@ void GameModel::BuildMenus()
 	auto &sd = SimulationData::Ref();
 	auto &elements = sd.elements;
 	auto &builtinGol = SimulationData::builtinGol;
-	int lastMenu = -1;
-	if(activeMenu != -1)
-		lastMenu = activeMenu;
 
 	std::array<ByteString, NUM_TOOLINDICES> activeToolIdentifiers;
 	for (int i = 0; i < NUM_TOOLINDICES; i++) {
@@ -414,15 +411,10 @@ void GameModel::BuildMenus()
 	lastTool = toolsets[activeToolset][0];
 
 	//Set default menu
-	activeMenu = SC_POWDERS;
+	if (activeMenu == -1)
+		activeMenu = SC_POWDERS;
 
-	if(lastMenu != -1)
-		activeMenu = lastMenu;
-
-	if(activeMenu != -1)
-		toolList = menuList[activeMenu]->GetToolList();
-	else
-		toolList = std::vector<Tool*>();
+	toolList = menuList[activeMenu]->GetToolList();
 
 	notifyMenuListChanged();
 	notifyToolListChanged();
