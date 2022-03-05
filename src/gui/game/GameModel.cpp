@@ -414,6 +414,8 @@ void GameModel::BuildMenus()
 	if (activeMenu == -1)
 		activeMenu = SC_POWDERS;
 
+	UpdateLastRegularMenu();
+
 	toolList = menuList[activeMenu]->GetToolList();
 
 	notifyMenuListChanged();
@@ -879,6 +881,17 @@ void GameModel::SetActiveToolset(int toolsetID)
 {
 	activeToolset = toolsetID;
 	notifyActiveToolsChanged();
+}
+
+void GameModel::UpdateLastRegularMenu()
+{
+	if (activeMenu != SC_DECO)
+		lastRegularMenu = activeMenu;
+}
+
+void GameModel::RestoreLastRegularMenu()
+{
+	SetActiveMenu(lastRegularMenu);
 }
 
 std::vector<Tool*> GameModel::GetUnlistedTools()

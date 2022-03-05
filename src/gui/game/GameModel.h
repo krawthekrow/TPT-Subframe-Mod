@@ -227,6 +227,8 @@ public:
 	std::vector<QuickOption*> GetQuickOptions();
 	void SetActiveMenu(int menuID);
 	int GetActiveMenu();
+	void UpdateLastRegularMenu();
+	void RestoreLastRegularMenu();
 	void SetActiveToolset(int toolsetID);
 	int GetActiveToolset();
 	void FrameStep(int frames);

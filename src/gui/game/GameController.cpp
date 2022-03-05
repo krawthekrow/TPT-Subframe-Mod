@@ -1073,6 +1073,13 @@ void GameController::SetActiveMenu(int menuID)
 		if (gameModel->GetActiveToolset() == TS_DECO)
 			gameModel->SetActiveToolset(TS_REGULAR);
 	}
+	gameModel->UpdateLastRegularMenu();
+}
+
+void GameController::RestoreLastRegularActiveTool()
+{
+	gameModel->SetActiveToolset(TS_REGULAR);
+	gameModel->RestoreLastRegularMenu();
 }
 
 std::vector<Menu*> GameController::GetMenuList()
