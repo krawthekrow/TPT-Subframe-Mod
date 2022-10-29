@@ -2488,8 +2488,9 @@ void GameView::OnDraw()
 			String configCursColor = String::Build("\x0F\x01\x01\xEE");
 			String stackCursColor = String::Build("\x0F\xFF\xEE\x01");
 			String plainColor = String::Build("\x0F\xFF\xFF\xFF");
+			int sparticleId = sample.SParticleIDs[stacki];
 			bool isConfigToolTarget =
-				configTool && configTool->GetId() == sample.SParticleIDs[stacki];
+				configTool && configTool->GetId() == sparticleId;
 			Particle sparticle = isConfigToolTarget ?
 				configTool->GetPart() : sample.SParticles[stacki];
 			bool isStackEditTarget =
@@ -2649,6 +2650,8 @@ void GameView::OnDraw()
 						"Tmp2: " << sparticle.tmp2 <<
 						(isConfiguringTmp2 ? highlightColor : noneString);
 				}
+
+				sampleInfo << ", #" << sparticleId;
 			}
 			else
 			{
@@ -2706,7 +2709,7 @@ void GameView::OnDraw()
 			StringBuilder sampleInfo;
 			sampleInfo << Format::Precision(2);
 
-			if (sample.particle.type)
+			if (!zoomEnabled && sample.particle.type)
 				sampleInfo << "#" << sample.ParticleID << ", ";
 
 			sampleInfo << "(" << sample.PositionX << " " << sample.PositionY << ")";
