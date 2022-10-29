@@ -2167,12 +2167,13 @@ void GameView::SetSaveButtonTooltips()
 		saveSimulationButton->SetToolTips("Re-upload the current simulation", "Upload a new simulation. Hold Ctrl to save offline.");
 }
 
-void GameView::drawHudParticleText(Graphics *g, StringBuilder sbText, int yoffset, int alpha, int wavelengthGfx, HudParticleTextGlowType glowType)
+void GameView::drawHudParticleText(Graphics *g, StringBuilder sbText, int *yoffset, bool alignLeft, int alpha, int wavelengthGfx, int wavelengthGfxOff, HudParticleTextGlowType glowType)
 {
 	String text = sbText.Build();
 	int textWidth = Graphics::textwidth(text);
 	int rectr = 0, rectg = 0, rectb = 0;
 	float alphamod = 1.f;
+
 	switch (glowType)
 	{
 	case HudParticleTextGlowType::YELLOW:
@@ -2190,12 +2191,26 @@ void GameView::drawHudParticleText(Graphics *g, StringBuilder sbText, int yoffse
 	default:
 		break;
 	}
-	g->fillrect(XRES-20-textWidth, 12 + yoffset, textWidth+8, 13, rectr, rectg, rectb, int(alpha*alphamod*0.5f));
-	g->drawtext(XRES-16-textWidth, 15 + yoffset, text, 255, 255, 255, int(alpha*alphamod*0.75f));
+
+	int xmargin = 12;
+	int xpad = 4;
+	g->fillrect(
+		alignLeft ? xmargin : (XRES - xmargin - textWidth - xpad * 2),
+		0 + *yoffset, textWidth + xpad * 2, 13,
+		rectr, rectg, rectb, int(alpha*alphamod*0.5f)
+	);
+	g->drawtext(
+		alignLeft ? (xmargin + xpad) : (XRES - xmargin - textWidth - xpad),
+		3 + *yoffset, text, 255, 255, 255, int(alpha*alphamod*0.75f));
 
 	if (wavelengthGfx)
 	{
-		int i, cr, cg, cb, j, h = 3, x = XRES-19-textWidth, y = 11+yoffset;
+		int i, cr, cg, cb, j, h = 3;
+		int xoff = -3 + wavelengthGfxOff;
+		int x = alignLeft ?
+			(xpad + xmargin + xoff) :
+			(XRES - xmargin - xpad - textWidth + xoff);
+		int y = -1+*yoffset;
 		int tmp;
 		g->fillrect(x, y, 30, h, 64, 64, 64, alpha); // coords -1 size +1 to work around bug in fillrect - TODO: fix fillrect
 		for (i = 0; i < 30; i++)
@@ -2227,6 +2242,8 @@ void GameView::drawHudParticleText(Graphics *g, StringBuilder sbText, int yoffse
 			}
 		}
 	}
+
+	*yoffset = *yoffset + 13;
 }
 
 void GameView::writeWavelength(StringBuilder *str, int wavelengthGfx)
@@ -2435,7 +2452,16 @@ void GameView::OnDraw()
 			alpha -= toolTipPresence*3;
 		if (alpha < 0)
 			alpha = 0;
-		int yoffset = 0;
+		int zoomWindowBottom =
+			ren->zoomWindowPosition.Y + ren->zoomScopeSize * ren->ZFACTOR;
+		int zoomWindowLeft = ren->zoomWindowPosition.X;
+		int zoomWindowRight =
+			ren->zoomWindowPosition.X + ren->zoomScopeSize * ren->ZFACTOR;
+		int yoffset = 12;
+		int yoffsetBelowZoom = zoomWindowBottom + 3;
+		int *partsYoffsetPtr = zoomEnabled ? &yoffsetBelowZoom : &yoffset;
+		bool isZoomWindowOnLeft = zoomWindowLeft < XRES - zoomWindowRight;
+		bool alignLeft = zoomEnabled && isZoomWindowOnLeft;
 
 		bool omitBegin = sample.StackIndexBegin != 0;
 		bool omitEnd = sample.StackIndexEnd != sample.SParticleCount;
@@ -2450,8 +2476,7 @@ void GameView::OnDraw()
 			if (excessParts != 1)
 				infoStr << "s";
 			infoStr << " omitted ...";
-			drawHudParticleText(g, infoStr, yoffset, alpha);
-			yoffset += 13;
+			drawHudParticleText(g, infoStr, partsYoffsetPtr, alignLeft, alpha);
 		}
 
 		for (int i = stackShowEnd - 1; i >= stackShowBegin; i--)
@@ -2460,13 +2485,38 @@ void GameView::OnDraw()
 			sampleInfo << Format::Precision(2);
 
 			int stacki = i - sample.StackIndexBegin;
+			String configCursColor = String::Build("\x0F\x01\x01\xEE");
+			String stackCursColor = String::Build("\x0F\xFF\xEE\x01");
+			String plainColor = String::Build("\x0F\xFF\xFF\xFF");
 			bool isConfigToolTarget =
 				configTool && configTool->GetId() == sample.SParticleIDs[stacki];
 			Particle sparticle = isConfigToolTarget ?
 				configTool->GetPart() : sample.SParticles[stacki];
+			bool isStackEditTarget =
+				c->GetStackEditDepth() >= 0 && i == sample.EffectiveStackEditDepth;
 			int wavelengthGfx = 0;
+			int wavelengthGfxOff = 0;
 			int type = sparticle.type;
 			int ctype = sparticle.ctype;
+
+			HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE;
+			if (isConfigToolTarget)
+			{
+				glowType = HudParticleTextGlowType::BLUE;
+			}
+
+			if (alignLeft)
+			{
+				if (isStackEditTarget)
+				{
+					sampleInfo << stackCursColor << ">" << plainColor << " ";
+				}
+				if (isConfigToolTarget)
+				{
+					sampleInfo << configCursColor << ">" << plainColor << " ";
+				}
+				wavelengthGfxOff += Graphics::textwidth(sampleInfo.Build());
+			}
 
 			if (type == PT_PHOT || type == PT_BIZR || type == PT_BIZRG || type == PT_BIZRS || type == PT_FILT || type == PT_BRAY || type == PT_C5)
 				wavelengthGfx = (ctype&0x3FFFFFFF);
@@ -2474,7 +2524,6 @@ void GameView::OnDraw()
 			if (showDebug || configTool)
 			{
 				String highlightColor = String::Build("\x0F\xFF\x77\x77"),
-					plainColor = String::Build("\x0F\xFF\xFF\xFF"),
 					noneString = String::Build("");
 
 				bool isConfiguring = isConfigToolTarget &&
@@ -2609,18 +2658,19 @@ void GameView::OnDraw()
 				sampleInfo << ", Pressure: " << sample.AirPressure;
 			}
 
-			HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE;
-			if (isConfigToolTarget)
+			if (!alignLeft)
 			{
-				sampleInfo << " \x0F\x01\x01\xEE<";
-				glowType = HudParticleTextGlowType::BLUE;
+				if (isConfigToolTarget)
+				{
+					sampleInfo << " " << configCursColor << "<";
+				}
+				if (isStackEditTarget)
+				{
+					sampleInfo << " " << stackCursColor << "<";
+				}
 			}
-			if (c->GetStackEditDepth() >= 0 && i == sample.EffectiveStackEditDepth)
-			{
-				sampleInfo << " \x0F\xFF\xEE\x01<";
-			}
-			drawHudParticleText(g, sampleInfo, yoffset, alpha, wavelengthGfx, glowType);
-			yoffset += 13;
+
+			drawHudParticleText(g, sampleInfo, partsYoffsetPtr, alignLeft, alpha, wavelengthGfx, wavelengthGfxOff, glowType);
 		}
 
 		if (showDebug && omitBegin)
@@ -2631,8 +2681,7 @@ void GameView::OnDraw()
 			if (excessParts != 1)
 				infoStr << "s";
 			infoStr << " omitted ...";
-			drawHudParticleText(g, infoStr, yoffset, alpha);
-			yoffset += 13;
+			drawHudParticleText(g, infoStr, partsYoffsetPtr, alignLeft, alpha);
 		}
 
 		if (!sample.SParticleCount)
@@ -2649,8 +2698,7 @@ void GameView::OnDraw()
 				sampleInfo << "Empty";
 			}
 
-			drawHudParticleText(g, sampleInfo, yoffset, alpha);
-			yoffset += 13;
+			drawHudParticleText(g, sampleInfo, partsYoffsetPtr, alignLeft, alpha);
 		}
 
 		if (showDebug)
@@ -2674,7 +2722,7 @@ void GameView::OnDraw()
 			if (sample.isMouseInSim)
 				sampleInfo << ", " << sample.AirPressure << " Pa";
 
-			drawHudParticleText(g, sampleInfo, yoffset, alpha);
+			drawHudParticleText(g, sampleInfo, &yoffset, false, alpha);
 		}
 	}
 

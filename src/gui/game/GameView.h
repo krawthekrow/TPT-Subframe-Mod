@@ -132,7 +132,7 @@ private:
 
 	void SetSaveButtonTooltips();
 
-	void drawHudParticleText(Graphics *g, StringBuilder text, int yoffset, int alpha, int wavelengthGfx = 0, HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE);
+	void drawHudParticleText(Graphics *g, StringBuilder text, int *yoffset, bool alignLeft, int alpha, int wavelengthGfx = 0, int wavelengthGfxOff = 0, HudParticleTextGlowType glowType = HudParticleTextGlowType::NONE);
 
 	void enableShiftBehaviour();
 	void disableShiftBehaviour();
