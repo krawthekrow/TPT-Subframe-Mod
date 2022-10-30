@@ -211,6 +211,7 @@ class LuaScriptInterface: public CommandInterface
 	std::vector<LuaSmartRef> lua_el_func_v, lua_gr_func_v, lua_cd_func_v;
 	std::vector<int> lua_el_mode_v;
 
+	void initNumPartsVar();
 public:
 	int tpt_index(lua_State *l);
 	int tpt_newIndex(lua_State *l);
@@ -228,6 +229,7 @@ public:
 	void custom_init_can_move();
 
 	void OnTick() override;
+	void OnPreHudDraw() override;
 	bool HandleEvent(LuaEvents::EventTypes eventType, Event * event) override;
 
 	void Init();

@@ -2436,6 +2436,8 @@ void GameView::OnDraw()
 		}
 	}
 
+	c->TriggerPreHudDraw();
+
 	if (recording)
 	{
 		String sampleInfo = String::Build("#", screenshotIndex, " ", String(0xE00E), " REC");

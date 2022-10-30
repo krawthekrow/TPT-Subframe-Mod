@@ -110,6 +110,12 @@ public:
 	int PushToStack(lua_State *l) override { return 0; }
 };
 
+class PreHudDrawEvent : public Event
+{
+public:
+	int PushToStack(lua_State *l) override { return 0; }
+};
+
 class BlurEvent : public Event
 {
 public:
@@ -147,6 +153,7 @@ public:
 		mousemove,
 		mousewheel,
 		tick,
+		prehuddraw,
 		blur,
 		close,
 		beforesim,

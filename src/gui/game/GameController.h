@@ -222,6 +222,8 @@ public:
 	bool GetMouseClickRequired();
 
 	void RemoveCustomGOLType(const ByteString &identifier);
+
+	void TriggerPreHudDraw();
 };
 
 #endif // GAMECONTROLLER_H

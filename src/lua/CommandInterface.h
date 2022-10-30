@@ -25,6 +25,7 @@ public:
 	//void AttachGameModel(GameModel * m);
 
 	virtual void OnTick() { }
+	virtual void OnPreHudDraw() { }
 
 	virtual bool HandleEvent(LuaEvents::EventTypes eventType, Event * event) { return true; }
 

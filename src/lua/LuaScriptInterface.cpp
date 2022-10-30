@@ -4191,6 +4191,7 @@ void LuaScriptInterface::initEventAPI()
 	lua_pushinteger(l, LuaEvents::mousemove); lua_setfield(l, -2, "mousemove");
 	lua_pushinteger(l, LuaEvents::mousewheel); lua_setfield(l, -2, "mousewheel");
 	lua_pushinteger(l, LuaEvents::tick); lua_setfield(l, -2, "tick");
+	lua_pushinteger(l, LuaEvents::prehuddraw); lua_setfield(l, -2, "prehuddraw");
 	lua_pushinteger(l, LuaEvents::blur); lua_setfield(l, -2, "blur");
 	lua_pushinteger(l, LuaEvents::close); lua_setfield(l, -2, "close");
 	lua_pushinteger(l, LuaEvents::beforesim); lua_setfield(l, -2, "beforesim");
@@ -4525,7 +4526,7 @@ bool LuaScriptInterface::HandleEvent(LuaEvents::EventTypes eventType, Event * ev
 	return LuaEvents::HandleEvent(this, event, ByteString::Build("tptevents-", eventType));
 }
 
-void LuaScriptInterface::OnTick()
+void LuaScriptInterface::initNumPartsVar()
 {
 	lua_getglobal(l, "simulation");
 	if (lua_istable(l, -1))
@@ -4534,8 +4535,20 @@ void LuaScriptInterface::OnTick()
 		lua_setfield(l, -2, "NUM_PARTS");
 	}
 	lua_pop(l, 1);
+}
+
+void LuaScriptInterface::OnTick()
+{
+	initNumPartsVar();
 	TickEvent ev;
 	HandleEvent(LuaEvents::tick, &ev);
+}
+
+void LuaScriptInterface::OnPreHudDraw()
+{
+	initNumPartsVar();
+	PreHudDrawEvent ev;
+	HandleEvent(LuaEvents::prehuddraw, &ev);
 }
 
 int LuaScriptInterface::Command(String command)
