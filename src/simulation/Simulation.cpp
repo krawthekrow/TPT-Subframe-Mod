@@ -127,7 +127,9 @@ void Simulation::Load(const GameSave *save, bool includePressure, Vec2<int> bloc
 			}
 		}
 
-		removeExistingParticles({ x, y });
+		// Allow pasting stacks under stack mode.
+		if ((replaceModeFlags&STACK_MODE) == 0)
+			removeExistingParticles({ x, y });
 
 		// Allocate particle (this location is guaranteed to be empty due to "full scan" logic above)
 		if (pfree == -1)
