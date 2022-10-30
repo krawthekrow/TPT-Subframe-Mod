@@ -18,7 +18,7 @@ void DebugLines::Draw()
 {
 	Graphics * g = view->GetGraphics();
 
-	if (view->GetDrawingLine())
+	if (view->GetDrawingLine() || view->GetDrawingRect())
 	{
 		ui::Point drawPoint1 = controller->PointTranslate(view->GetLineStartCoords()), drawPoint2 = controller->PointTranslate(view->GetLineFinishCoords());
 		if (view->GetDrawSnap())
