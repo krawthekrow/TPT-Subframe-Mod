@@ -167,7 +167,8 @@ void ConfigTool::Update(Simulation *sim)
 	bool allowDiag = !(
 		configState == ConfigState::dtecTmp2 ||
 		configState == ConfigState::tsnsTmp2 ||
-		configState == ConfigState::lsnsTmp2
+		configState == ConfigState::lsnsTmp2 ||
+		configState == ConfigState::vsnsTmp2
 	);
 	ui::Point proj(0, 0);
 	if (configState != ConfigState::ready)
@@ -215,6 +216,7 @@ void ConfigTool::Update(Simulation *sim)
 	case ConfigState::dtecTmp2:
 	case ConfigState::tsnsTmp2:
 	case ConfigState::lsnsTmp2:
+	case ConfigState::vsnsTmp2:
 		configPart.tmp2 = getDist(proj);
 		break;
 	case ConfigState::convTmp:
@@ -262,6 +264,9 @@ void ConfigTool::Click(Simulation *sim, Brush *brush, ui::Point position)
 		case PT_LSNS:
 			configState = ConfigState::lsnsTmp2;
 			break;
+		case PT_VSNS:
+			configState = ConfigState::vsnsTmp2;
+			break;
 		case PT_CONV:
 			configState = ConfigState::convTmp;
 			break;
@@ -305,6 +310,7 @@ void ConfigTool::Click(Simulation *sim, Brush *brush, ui::Point position)
 	case ConfigState::dtecTmp2:
 	case ConfigState::tsnsTmp2:
 	case ConfigState::lsnsTmp2:
+	case ConfigState::vsnsTmp2:
 		pConfigPart->tmp2 = configPart.tmp2;
 		Reset(sim);
 		break;
@@ -348,9 +354,21 @@ int ConfigTool::GetId()
 
 bool ConfigTool::IsConfigurableType(int type)
 {
-	return type == PT_DRAY || type == PT_CRAY || type == PT_LDTC ||
-		type == PT_DTEC || type == PT_TSNS || type == PT_LSNS ||
-		type == PT_CONV || type == PT_FILT;
+	switch (type)
+	{
+	case PT_DRAY:
+	case PT_CRAY:
+	case PT_LDTC:
+	case PT_DTEC:
+	case PT_TSNS:
+	case PT_LSNS:
+	case PT_VSNS:
+	case PT_CONV:
+	case PT_FILT:
+		return true;
+	default:
+		return false;
+	}
 }
 
 bool ConfigTool::IsConfiguring()
@@ -382,7 +400,8 @@ bool ConfigTool::IsConfiguringTmp2()
 		configState == ConfigState::crayTmp2 ||
 		configState == ConfigState::dtecTmp2 ||
 		configState == ConfigState::tsnsTmp2 ||
-		configState == ConfigState::lsnsTmp2;
+		configState == ConfigState::lsnsTmp2 ||
+		configState == ConfigState::vsnsTmp2;
 }
 
 void ConfigTool::drawRedLine(Renderer *ren, int startx, int starty, int endx, int endy)
@@ -427,6 +446,7 @@ void ConfigTool::DrawHUD(Renderer *ren)
 		case PT_DTEC:
 		case PT_TSNS:
 		case PT_LSNS:
+		case PT_VSNS:
 			drawSquareRdBox(ren);
 			break;
 		case PT_DRAY:
@@ -485,6 +505,7 @@ void ConfigTool::DrawHUD(Renderer *ren)
 	case ConfigState::dtecTmp2:
 	case ConfigState::tsnsTmp2:
 	case ConfigState::lsnsTmp2:
+	case ConfigState::vsnsTmp2:
 		drawSquareRdBox(ren);
 		break;
 	case ConfigState::convTmp:

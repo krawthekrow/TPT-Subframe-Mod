@@ -132,9 +132,10 @@ class ConfigTool: public Tool
 		dtecTmp2,
 		tsnsTmp2,
 		lsnsTmp2,
+		vsnsTmp2,
 		convTmp,
 		ldtcTmp,
-		ldtcLife
+		ldtcLife,
 	};
 	GameModel * gameModel;
 	int configPartId;
