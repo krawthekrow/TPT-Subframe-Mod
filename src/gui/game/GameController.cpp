@@ -251,12 +251,13 @@ void GameController::PlaceSave(ui::Point position)
 	{
 		HistorySnapshot();
 		SetWasModified(true);
-		gameModel->GetSimulation()->needReloadParticleOrder = true;
+		gameModel->GetSimulation()->BeforeStackEdit();
 		if (!gameModel->GetSimulation()->Load(placeSave, !gameView->ShiftBehaviour(), position.X, position.Y))
 		{
 			gameModel->SetPaused(placeSave->paused | gameModel->GetPaused());
 			Client::Ref().MergeStampAuthorInfo(placeSave->authors);
 		}
+		gameModel->GetSimulation()->AfterStackEdit();
 	}
 }
 
