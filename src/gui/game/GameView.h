@@ -184,6 +184,7 @@ public:
 	//all of these are only here for one debug lines
 	bool GetMouseDown() { return isMouseDown; }
 	bool GetDrawingLine() { return drawMode == DrawLine && isMouseDown && selectMode == SelectNone; }
+	bool GetDrawingRect() { return drawMode == DrawRect && isMouseDown && selectMode == SelectNone; }
 	bool GetDrawSnap() { return drawSnap; }
 	ui::Point GetLineStartCoords() { return drawPoint1; }
 	ui::Point GetLineFinishCoords() { return currentMouse; }
