@@ -2799,45 +2799,41 @@ void GameView::OnDraw()
 			drawHudParticleText(g, infoStr, partsYoffsetPtr, alignLeft, alpha);
 		}
 
-		if (!sample.SParticleCount)
 		{
 			StringBuilder sampleInfo;
 			sampleInfo << Format::Precision(2);
+			bool needComma = false;
 
 			if (sample.WallType)
 			{
 				sampleInfo << c->WallName(sample.WallType);
+				needComma = true;
 			}
-			else
+			else if (!sample.particle.type)
 			{
 				sampleInfo << "Empty";
+				needComma = true;
 			}
 
-			drawHudParticleText(g, sampleInfo, partsYoffsetPtr, alignLeft, alpha);
-		}
-
-		if (showDebug)
-		{
-			StringBuilder sampleInfo;
-			sampleInfo << Format::Precision(2);
-
-			if (!zoomEnabled && sample.particle.type)
-				sampleInfo << "#" << sample.ParticleID << ", ";
-
-			sampleInfo << "(" << sample.PositionX << " " << sample.PositionY << ")";
-
-			auto gravtot = std::abs(sample.GravityVelocityX) +
-			               std::abs(sample.GravityVelocityY);
-			if (gravtot)
-				sampleInfo << ", GX: " << sample.GravityVelocityX << " GY: " << sample.GravityVelocityY;
-
-			if (c->GetAHeatEnable())
+			if (showDebug)
 			{
-				sampleInfo << ", AHeat: ";
-				format::RenderTemperature(sampleInfo, sample.AirTemperature, c->GetTemperatureScale());
+				if (needComma)
+					sampleInfo << ", ";
+				sampleInfo << "(" << sample.PositionX << " " << sample.PositionY << ")";
+
+				auto gravtot = std::abs(sample.GravityVelocityX) +
+											 std::abs(sample.GravityVelocityY);
+				if (gravtot)
+					sampleInfo << ", GX: " << sample.GravityVelocityX << " GY: " << sample.GravityVelocityY;
+
+				if (c->GetAHeatEnable())
+				{
+					sampleInfo << ", AHeat: ";
+					format::RenderTemperature(sampleInfo, sample.AirTemperature, c->GetTemperatureScale());
+				}
+				if (sample.isMouseInSim)
+					sampleInfo << ", " << sample.AirPressure << " Pa";
 			}
-			if (sample.isMouseInSim)
-				sampleInfo << ", " << sample.AirPressure << " Pa";
 
 			drawHudParticleText(g, sampleInfo, &yoffset, false, alpha);
 		}
