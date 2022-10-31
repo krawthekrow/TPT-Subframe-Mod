@@ -188,3 +188,7 @@ v1.14:
 - Make BRAY life brightness offset also affect tmp=1 BRAY.
 - Fix menu glitch when toggling config tool from deco menu.
 - Fix vanilla file brower search query change bug.
+
+v1.15:
+- Merge changes in 97.0.
+- Don't change particle IDs in stack edit if stack mode is not enabled.
