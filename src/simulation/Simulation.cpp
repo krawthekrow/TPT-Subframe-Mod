@@ -3655,7 +3655,8 @@ void Simulation::ReloadParticleOrder()
 
 void Simulation::BeforeStackEdit()
 {
-	if (stackEditDepth < 0)
+	bool stackModeEnabled = (replaceModeFlags&STACK_MODE) != 0;
+	if (stackEditDepth < 0 && !stackModeEnabled)
 		return;
 	CompleteDebugUpdateParticles();
 	// use pmap_count as count buffer
@@ -3675,29 +3676,31 @@ void Simulation::BeforeStackEdit()
 		pmap_count[party][partx]++;
 	}
 	int frontPtr = 0, backPtr = NPART - numInBack;
-	int backBegin = backPtr;
 
-	std::map<unsigned int, unsigned int> soapList;
-	for (int i = 0; i <= parts_lastActiveIndex; i++)
+	if (stackModeEnabled)
 	{
-		if (!parts[i].type)
-			continue;
-		int partx = (int)(parts[i].x+0.5f);
-		int party = (int)(parts[i].y+0.5f);
-		pmap_count[party][partx]--;
-		bool atFront = (int)pmap_count[party][partx] > stackEditDepth;
-		int newId = atFront ? frontPtr : backPtr;
-		if (atFront)
-			frontPtr++;
-		else
-			backPtr++;
-		stackReorderParts[newId] = parts[i];
-		if (parts[i].type == PT_SOAP)
-			soapList.insert(std::pair<unsigned int, unsigned int>(i, newId));
+		std::map<unsigned int, unsigned int> soapList;
+		for (int i = 0; i <= parts_lastActiveIndex; i++)
+		{
+			if (!parts[i].type)
+				continue;
+			int partx = (int)(parts[i].x+0.5f);
+			int party = (int)(parts[i].y+0.5f);
+			pmap_count[party][partx]--;
+			bool atFront = (int)pmap_count[party][partx] > stackEditDepth;
+			int newId = atFront ? frontPtr : backPtr;
+			if (atFront)
+				frontPtr++;
+			else
+				backPtr++;
+			stackReorderParts[newId] = parts[i];
+			if (parts[i].type == PT_SOAP)
+				soapList.insert(std::pair<unsigned int, unsigned int>(i, newId));
+		}
+		memcpy(parts, stackReorderParts, sizeof(parts));
+		FixSoapLinks(soapList);
+		parts_lastActiveIndex = NPART-1;
 	}
-	memcpy(parts, stackReorderParts, sizeof(parts));
-	FixSoapLinks(soapList);
-	parts_lastActiveIndex = NPART-1;
 	RecalcFreeParticles(false);
 
 	// set pmap to particles at stack depth for delete;
@@ -3705,6 +3708,7 @@ void Simulation::BeforeStackEdit()
 	// as a HACK to force delete to target the right particle
 	memset(pmap, 0, sizeof(pmap));
 	memset(photons, 0, sizeof(photons));
+	memset(pmap_count, 0, sizeof(pmap_count));
 	for (int i = parts_lastActiveIndex; i >= 0; i--)
 	{
 		int t = parts[i].type;
@@ -3712,17 +3716,21 @@ void Simulation::BeforeStackEdit()
 			continue;
 		int x = (int)(parts[i].x+0.5f);
 		int y = (int)(parts[i].y+0.5f);
-		if (i < backBegin && pmap[y][x])
+
+		if ((int)pmap_count[y][x] > stackEditDepth && pmap[y][x])
 			continue;
+
 		pmap[y][x] = PMAP(i, t);
 		photons[y][x] = PMAP(i, t);
+		pmap_count[y][x]++;
 	}
 	needReloadParticleOrder = true;
 }
 
 void Simulation::AfterStackEdit()
 {
-	if (stackEditDepth < 0)
+	bool stackModeEnabled = (replaceModeFlags&STACK_MODE) != 0;
+	if (stackEditDepth < 0 && !stackModeEnabled)
 		return;
 	RecalcFreeParticles(false);
 }
