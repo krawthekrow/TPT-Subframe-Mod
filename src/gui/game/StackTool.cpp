@@ -165,7 +165,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 			sim->parts[parts[i]].x = stackPos.X;
 			sim->parts[parts[i]].y = stackPos.Y;
 		}
-		delete partobjs;
+		delete[] partobjs;
 	}
 }
 
