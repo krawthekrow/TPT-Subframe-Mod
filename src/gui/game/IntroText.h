@@ -62,22 +62,15 @@ inline ByteString IntroText()
 	      "\n\boUse 'Z' for a zoom tool. Click to make the drawable zoom window stay around. Use the wheel to change the zoom strength.\n"
 	      "The spacebar can be used to pause physics. Use 'F' to step ahead by one frame.\n"
 	      "Use 'S' to save parts of the window as 'stamps'. 'L' loads the most recent stamp, 'K' shows a library of stamps you saved.\n"
-	      "Use 'P' to take a screenshot and save it into the current directory.\n"
 	      "Use 'H' to toggle the HUD. Use 'D' to toggle debug mode in the HUD.\n"
 	      "\n"
 	      "Contributors: \bgStanislaw K Skowronek (Designed the original Powder Toy),\n"
 	      "\bgSimon Robertshaw, Skresanov Savely, cracker64, Catelite, Victoria Hoyle, Nathan Cousins, jacksonmj,\n"
 	      "\bgFelix Wallin, Lieuwe Mosch, Anthony Boot, Me4502, MaksProg, jacob1, mniip, LBPHacker\n"
-	      "\n";
-	if constexpr (BETA)
-	{
-		sb << "\brThis is a BETA, you cannot save things publicly, nor open local saves and stamps made with it in older versions.\n"
-		      "\brIf you are planning on publishing any saves, use the release version.\n";
-	}
-	else
-	{
-		sb << "\bgTo use online features such as saving, you need to register at: \brhttps://" << SERVER << "/Register.html\n";
-	}
+	      "\n"
+				"This is the Subframe Mod by mark2222, which adds many UI features over the base game.\n"
+				"For a full list of controls, refer to the README at: \brhttps://github.com/krawthekrow/TPT-Subframe-Mod\n"
+				"\bgTo use online features such as saving, you need to register at: \brhttps://" << SERVER << "/Register.html\n";
 	sb << "\n\bt" << VersionInfo();
 	return sb.Build();
 }
