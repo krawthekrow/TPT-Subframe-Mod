@@ -42,7 +42,6 @@ HUD changes:
 
 Other quality-of-life changes:
 - Alt-F continues updating particles until it encouters an "interesting" update (create\_part, delete\_part or part\_change\_type called), and does not display any log messages until the frame is completed.
-- You can paste and place stamps outside the simulation boundary.
 - When pasting or placing stamps, the white dotted paste boundary is not shown.
 - If you attempt to open a save or close the window with the ESC button (the case for closing with the 'X' button has not been implemented) when there are unsaved changes, a confirmation warning is displayed.
 - If you attempt to save when you're in the middle of a frame, a confirmation warning is displayed.
@@ -62,7 +61,6 @@ New Lua interfaces:
 - `tpt.setrecordinterval(num_frames: int)`: Changes the recording interval to once every `num_frames` frames.
 - `sim.reloadParticleOrder()`: Reloads particle order.
 - (v1.13) `tpt.set_bray_life_brightness_threshold(thres: int)`: Make BRAY visible even when its life is low. `thres` is added to BRAY's alpha value when it is in the non-solid (i.e. `life != 2`) state.
-- (v1.14) `event.prehuddraw`: Event that gets fired just before the HUD is rendered. This allows Lua scripts to draw interfaces below the HUD.
 
 Note that the original game already supports the following subframe debugging features (enable with the Lua command `tpt.setdebug(0x8)`):
 - Shift-F updates all particles up to the particle where your mouse is at.
@@ -192,3 +190,7 @@ v1.14:
 v1.15:
 - Merge changes in 97.0.
 - Don't change particle IDs in stack edit if stack mode is not enabled.
+
+v1.16:
+- Merge changes in 98.0.
+- Remove prehuddraw Lua event (you can use aftersimdraw instead).

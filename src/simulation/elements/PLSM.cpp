@@ -1,6 +1,6 @@
 #include "simulation/ElementCommon.h"
+#include "FIRE.h"
 
-int Element_FIRE_update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
 static void create(ELEMENT_CREATE_FUNC_ARGS);
 
@@ -8,7 +8,7 @@ void Element::Element_PLSM()
 {
 	Identifier = "DEFAULT_PT_PLSM";
 	Name = "PLSM";
-	Colour = PIXPACK(0xBB99FF);
+	Colour = 0xBB99FF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_GAS;
 	Enabled = 1;
@@ -52,10 +52,10 @@ void Element::Element_PLSM()
 
 static int graphics(GRAPHICS_FUNC_ARGS)
 {
-	auto color = Renderer::plasmaTableAt(cpart->life);
-	*colr = PIXR(color);
-	*colg = PIXG(color);
-	*colb = PIXB(color);
+	RGB<uint8_t> color = Renderer::plasmaTableAt(cpart->life);
+	*colr = color.Red;
+	*colg = color.Green;
+	*colb = color.Blue;
 
 	*firea = 255;
 	*firer = *colr;
@@ -70,5 +70,5 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	sim->parts[i].life = RNG::Ref().between(50, 199);
+	sim->parts[i].life = sim->rng.between(50, 199);
 }

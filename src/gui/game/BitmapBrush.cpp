@@ -1,80 +1,68 @@
 #include "BitmapBrush.h"
-
-#include <cmath>
 #include "Misc.h"
+#include <algorithm>
+#include <cmath>
 
-#include "common/tpt-minmax.h"
-
-BitmapBrush::BitmapBrush(unsigned char *newBitmap, ui::Point rectSize_):
-	Brush(ui::Point(0, 0)),
-	origSize(0, 0)
+BitmapBrush::BitmapBrush(ui::Point inputSize, unsigned char const *inputBitmap)
 {
-	ui::Point newSize = rectSize_;
+	ui::Point newSize = inputSize;
 
 	//Ensure the rect has odd dimensions so we can pull an integer radius with a 1x1 centre
-	if(!(newSize.X % 2))
+	if (!(newSize.X % 2))
 		newSize.X += 1;
-	if(!(newSize.Y % 2))
+	if (!(newSize.Y % 2))
 		newSize.Y += 1;
 
-	radius = (newSize-ui::Point(1, 1))/2;
-	size = newSize;
-	origSize = size;
+	origSize = newSize;
+	origBitmap = std::make_unique<unsigned char []>(newSize.X * newSize.Y);
+	std::fill(&origBitmap[0], &origBitmap[newSize.X * newSize.Y], 0);
+	for (int y = 0; y < inputSize.Y; y++)
+		for (int x = 0; x < inputSize.X; x++)
+			origBitmap[x + y * newSize.X] = inputBitmap[x + y * inputSize.X];
+}
 
-	origBitmap = new unsigned char[size.X*size.Y];
-	std::fill(origBitmap, origBitmap+(size.X*size.Y), 0);
-	for(int y = 0; y < rectSize_.Y; y++)
-	{
-		for(int x = 0; x < rectSize_.X; x++)
-		{
-			if(newBitmap[(y*rectSize_.X)+x] >= 128)
-				origBitmap[(y*size.X)+x] = newBitmap[(y*rectSize_.X)+x];
-		}
-	}
-
-	SetRadius(radius);
-};
-
-void BitmapBrush::GenerateBitmap()
+BitmapBrush::BitmapBrush(const BitmapBrush &other) : BitmapBrush(other.origSize, &other.origBitmap[0])
 {
-	if(origBitmap)
+}
+
+std::unique_ptr<unsigned char []> BitmapBrush::GenerateBitmap() const
+{
+	ui::Point size = radius * 2 + Vec2{ 1, 1 };
+	auto bitmap = std::make_unique<unsigned char []>(size.X * size.Y);
+	if (size == origSize)
+		std::copy(&origBitmap[0], &origBitmap[origSize.X * origSize.Y], &bitmap[0]);
+	else
 	{
-		delete[] bitmap;
-		bitmap = new unsigned char[size.X*size.Y];
-		if(size == origSize)
-			std::copy(origBitmap, origBitmap+(origSize.X*origSize.Y), bitmap);
-		else
+		//Bilinear interpolation
+		float factorX = ((float)origSize.X)/((float)size.X);
+		float factorY = ((float)origSize.Y)/((float)size.Y);
+		for (int y = 0; y < size.Y; y++)
 		{
-			//Bilinear interpolation
-			float factorX = ((float)origSize.X)/((float)size.X);
-			float factorY = ((float)origSize.Y)/((float)size.Y);
-			for(int y = 0; y < size.Y; y++)
+			for (int x = 0; x < size.X; x++)
 			{
-				for(int x = 0; x < size.X; x++)
-				{
-					float originalY = ((float)y)*factorY;
-					float originalX = ((float)x)*factorX;
+				float originalY = ((float)y)*factorY;
+				float originalX = ((float)x)*factorX;
 
-					auto lowerX = int(std::floor(originalX));
-					auto upperX = int(std::min((float)(origSize.X-1), std::floor(originalX+1.0f)));
-					auto lowerY = int(std::floor(originalY));
-					auto upperY = int(std::min((float)(origSize.Y-1), std::floor(originalY+1.0f)));
+				auto lowerX = int(std::floor(originalX));
+				auto upperX = int(std::min((float)(origSize.X-1), std::floor(originalX+1.0f)));
+				auto lowerY = int(std::floor(originalY));
+				auto upperY = int(std::min((float)(origSize.Y-1), std::floor(originalY+1.0f)));
 
-					unsigned char topRight = origBitmap[(lowerY*origSize.X)+upperX];
-					unsigned char topLeft = origBitmap[(lowerY*origSize.X)+lowerX];
-					unsigned char bottomRight = origBitmap[(upperY*origSize.X)+upperX];
-					unsigned char bottomLeft = origBitmap[(upperY*origSize.X)+lowerX];
-					float top = LinearInterpolate<float>(topLeft, topRight, float(lowerX), float(upperX), originalX);
-					float bottom = LinearInterpolate<float>(bottomLeft, bottomRight, float(lowerX), float(upperX), originalX);
-					float mid = LinearInterpolate<float>(top, bottom, float(lowerY), float(upperY), originalY);
-					bitmap[(y*size.X)+x] = mid > 128 ? 255 : 0;
-				}
+				unsigned char topRight = origBitmap[(lowerY*origSize.X)+upperX];
+				unsigned char topLeft = origBitmap[(lowerY*origSize.X)+lowerX];
+				unsigned char bottomRight = origBitmap[(upperY*origSize.X)+upperX];
+				unsigned char bottomLeft = origBitmap[(upperY*origSize.X)+lowerX];
+				float top = LinearInterpolate<float>(topLeft, topRight, float(lowerX), float(upperX), originalX);
+				float bottom = LinearInterpolate<float>(bottomLeft, bottomRight, float(lowerX), float(upperX), originalX);
+				float mid = LinearInterpolate<float>(top, bottom, float(lowerY), float(upperY), originalY);
+				bitmap[(y*size.X)+x] = mid > 128 ? 255 : 0;
 			}
 		}
 	}
+	return bitmap;
 }
 
-BitmapBrush::~BitmapBrush()
+std::unique_ptr<Brush> BitmapBrush::Clone() const
 {
-	delete[] origBitmap;
+	return std::make_unique<BitmapBrush>(*this);
 }

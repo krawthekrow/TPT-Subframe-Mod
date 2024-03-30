@@ -13,28 +13,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TPT_COMPAT_H
-#define TPT_COMPAT_H
-
-
+#pragma once
 #include <cstddef>
 #include <memory>
 #include <type_traits>
 #include <utility>
 
-//some compatibility stuff for non-standard compilers
-#if defined(WIN) && !defined(strcasecmp)
-#define strcasecmp stricmp
-#endif
+#define _USE_MATH_DEFINES
+#include <cmath>
 
-#ifndef M_PI
-#define M_PI 3.14159265f
-#endif
-
-typedef unsigned short Uint16;
-
-#ifndef NULL
-# define NULL 0
-#endif
-
+#ifdef M_PI
+constexpr float  TPT_PI_FLT = float(M_PI);
+constexpr double TPT_PI_DBL = double(M_PI);
+#else
+constexpr float  TPT_PI_FLT = 3.14159265f;
+constexpr double TPT_PI_DBL = 3.14159265358979323846;
 #endif

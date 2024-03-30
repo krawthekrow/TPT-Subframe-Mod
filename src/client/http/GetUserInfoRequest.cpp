@@ -1,30 +1,22 @@
 #include "GetUserInfoRequest.h"
-
-#include "Config.h"
 #include "client/UserInfo.h"
+#include "Config.h"
 
 namespace http
 {
 	GetUserInfoRequest::GetUserInfoRequest(ByteString username) :
-		APIRequest(SCHEME SERVER "/User.json?Name=" + username)
+		APIRequest(ByteString::Build(SCHEME, SERVER, "/User.json?Name=", username), authOmit, false)
 	{
 	}
 
-	GetUserInfoRequest::~GetUserInfoRequest()
+	UserInfo GetUserInfoRequest::Finish()
 	{
-	}
-
-	std::unique_ptr<UserInfo> GetUserInfoRequest::Finish()
-	{
-		std::unique_ptr<UserInfo> user_info;
 		auto result = APIRequest::Finish();
-		// Note that at this point it's not safe to use any member of the
-		// GetUserInfoRequest object as Request::Finish signals RequestManager
-		// to delete it.
-		if (result.document)
+		UserInfo userInfo;
+		try
 		{
-			auto &user = (*result.document)["User"];
-			user_info = std::unique_ptr<UserInfo>(new UserInfo(
+			auto &user = result["User"];
+			userInfo = UserInfo(
 				user["ID"].asInt(),
 				user["Age"].asInt(),
 				user["Username"].asString(),
@@ -37,9 +29,13 @@ namespace http
 				user["Forum"]["Topics"].asInt(),
 				user["Forum"]["Replies"].asInt(),
 				user["Forum"]["Reputation"].asInt()
-			));
+			);
 		}
-		return user_info;
+		catch (const std::exception &ex)
+		{
+			throw RequestError("Could not read response: " + ByteString(ex.what()));
+		}
+		return userInfo;
 	}
 }
 

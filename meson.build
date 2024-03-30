@@ -10,7 +10,7 @@ project(
 		'build.cpp_std=c++17', # used by to_array
 		'build.cpp_rtti=false', # used by to_array
 	],
-	meson_version: '>=0.61.0',
+	meson_version: '>=0.64.0',
 )
 
 if get_option('prepare')
@@ -18,6 +18,7 @@ if get_option('prepare')
 	subdir_done()
 endif
 
+fs = import('fs')
 to_array = generator(
 	executable('toarray', sources: 'resources/ToArray.cpp', native: true),
 	output: [ '@PLAINNAME@.cpp', '@PLAINNAME@.h' ],
@@ -37,18 +38,26 @@ host_arch = host_machine.cpu_family()
 host_platform = host_machine.system()
 # educated guesses follow, PRs welcome
 if c_compiler.get_id() in [ 'msvc' ]
+	if host_platform != 'windows'
+		error('this seems fishy')
+	endif
 	host_libc = 'msvc'
 elif c_compiler.get_id() in [ 'gcc' ] and host_platform == 'windows'
 	host_libc = 'mingw'
-	if get_option('b_lto')
-		warning('mingw does not like static + lto')
-	endif
 elif host_platform in [ 'darwin' ]
 	host_libc = 'macos'
+elif host_platform in [ 'emscripten' ]
+	host_platform = 'emscripten'
+	host_libc = 'emscripten'
 elif host_platform in [ 'android' ]
 	host_platform = 'android'
 	host_libc = 'bionic'
 else
+	if host_platform != 'linux'
+		# TODO: maybe use 'default' in place of 'linux', or use something other than host_platform where details such as desktop integration are concerned
+		warning('host platform is not linux but we will pretend that it is')
+		host_platform = 'linux'
+	endif
 	host_libc = 'gnu'
 endif
 
@@ -57,37 +66,32 @@ if static_variant != 'prebuilt' and host_platform == 'android'
 	warning('only prebuilt libs are supported for android')
 	static_variant = 'prebuilt'
 endif
-if static_variant == 'system' and host_platform == 'windows'
-	warning('no way to find system libs on windows')
+if static_variant == 'system' and host_platform == 'windows' and host_libc == 'msvc'
+	warning('no way to find system libs for msvc on windows')
 	static_variant = 'prebuilt'
 endif
 
 is_static = static_variant != 'none'
 is_debug = get_option('optimization') in [ '0', 'g' ]
-enforce_https = get_option('enforce_https')
-
-if not is_debug and not enforce_https
-	error('refusing to build a release binary with enforce_https=false')
-endif
+app_exe = get_option('app_exe')
 
 tpt_libs_static = 'none'
 if static_variant == 'prebuilt'
 	tpt_libs_static = 'static'
 endif
-if static_variant == 'none' and host_platform == 'windows'
+if static_variant == 'none' and host_platform == 'windows' and host_libc == 'msvc'
 	tpt_libs_static = 'dynamic'
 endif
 tpt_libs_debug = is_debug ? 'debug' : 'release'
 tpt_libs_variant = '@0@-@1@-@2@-@3@'.format(host_arch, host_platform, host_libc, tpt_libs_static)
 tpt_libs_vtag = get_option('tpt_libs_vtag')
 if tpt_libs_vtag == ''
-	tpt_libs_vtag = 'v20230101182417'
+	tpt_libs_vtag = 'v20240112165024'
 endif
 if tpt_libs_static != 'none'
 	if tpt_libs_variant not in [
 		'x86_64-linux-gnu-static',
 		'x86_64-windows-mingw-static',
-		'x86_64-windows-mingw-dynamic',
 		'x86_64-windows-msvc-static',
 		'x86_64-windows-msvc-dynamic',
 		'x86-windows-msvc-static',
@@ -98,6 +102,7 @@ if tpt_libs_static != 'none'
 		'x86_64-android-bionic-static',
 		'arm-android-bionic-static',
 		'aarch64-android-bionic-static',
+		'wasm32-emscripten-emscripten-static',
 	]
 		error('no prebuilt @0@ libraries are currently provided'.format(tpt_libs_variant))
 	endif
@@ -122,10 +127,6 @@ else
 	endif
 endif
 
-conf_data = configuration_data()
-conf_data.set('CURL_STATICLIB', false)
-conf_data.set('ZLIB_WINAPI', false)
-
 x86_sse_level_str = get_option('x86_sse')
 if x86_sse_level_str == 'auto'
 	x86_sse_level = 20
@@ -144,7 +145,14 @@ endif
 
 lua_variant = get_option('lua')
 if lua_variant == 'auto'
-	lua_variant = 'luajit'
+	if host_platform == 'emscripten'
+		lua_variant = 'lua5.2'
+	else
+		lua_variant = 'luajit'
+	endif
+endif
+if lua_variant == 'luajit' and host_platform == 'emscripten'
+	error('luajit does not work with emscripten')
 endif
 if lua_variant == 'none'
 	lua_dep = []
@@ -162,9 +170,6 @@ endif
 
 enable_http = get_option('http')
 if host_platform == 'android'
-	enable_http = false
-endif
-if host_platform == 'android'
 	android_ndk_toolchain_prefix = meson.get_external_property('android_ndk_toolchain_prefix')
 	android_platform = meson.get_external_property('android_platform')
 	tpt_libs_android_toolchain_prefix = tpt_libs.get_variable('android_toolchain_prefix')
@@ -177,21 +182,57 @@ if host_platform == 'android'
 		error('tpt-libs android platform mismatch')
 	endif
 endif
-curl_dep = enable_http ? dependency('libcurl', static: is_static) : []
-
-enable_gravfft = get_option('gravfft')
-fftw_dep = enable_gravfft ? dependency('fftw3f', static: is_static) : []
-
-threads_dep = dependency('threads')
-zlib_dep = dependency('zlib', static: is_static)
-png_dep = dependency('libpng16', static: is_static)
-sdl2_dep = dependency('sdl2', static: is_static)
-bzip2_dep = dependency('bzip2', static: is_static)
-json_dep = dependency('jsoncpp', static: is_static)
+curl_dep = []
+if enable_http and host_platform != 'emscripten'
+	curl_dep = dependency('libcurl', static: is_static)
+endif
 
 project_link_args = []
 project_c_args = []
 project_cpp_args = []
+
+fftw_dep = dependency('fftw3f', static: is_static)
+threads_dep = dependency('threads')
+if host_platform == 'emscripten'
+	zlib_dep = []
+	png_dep = []
+	sdl2_dep = []
+	bzip2_dep = []
+	project_link_args += [
+		'--no-heap-copy',
+		'-s', 'WASM=1',
+		'-s', 'ALLOW_MEMORY_GROWTH=1',
+		'-s', 'FORCE_FILESYSTEM=1',
+		'-s', 'EXIT_RUNTIME=0',
+		'-s', 'EXPORTED_RUNTIME_METHODS=ccall,cwrap',
+		'-s', 'FS_DEBUG',
+		'-s', 'MODULARIZE',
+		'-s', 'EXPORT_NAME=create_' + app_exe,
+		'-Wl,-u,_emscripten_run_callback_on_thread',
+		'-lidbfs.js',
+	]
+	emcc_args = [
+		'-s', 'USE_SDL=2',
+		'-s', 'USE_BZIP2=1',
+		'-s', 'USE_LIBPNG',
+		'-s', 'USE_ZLIB=1',
+		'-s', 'DISABLE_EXCEPTION_CATCHING=0',
+	]
+	if is_debug
+		project_link_args += [ '--source-map-base=./' ]
+		emcc_args += [ '-gsource-map' ]
+	endif
+	project_link_args += emcc_args
+	project_c_args += emcc_args
+	project_cpp_args += emcc_args
+else
+	zlib_dep = dependency('zlib', static: is_static)
+	png_dep = dependency('libpng16', static: is_static)
+	sdl2_dep = dependency('sdl2', static: is_static)
+	bzip2_dep = dependency('bzip2', static: is_static)
+endif
+json_dep = dependency('jsoncpp', static: is_static)
+
 if is_msvc
 	if x86_sse_level >= 30
 		warning('SSE3 configured to be enabled but unavailable in msvc')
@@ -277,16 +318,15 @@ else
 endif
 
 if host_platform == 'windows'
-	args_ccomp_win = [ '-D_WIN32_WINNT=0x0501' ]
-	project_c_args   += args_ccomp_win
-	project_cpp_args += args_ccomp_win
+	args_ccomp_win = [ '-D_WIN32_WINNT=0x0501', '-DNOMINMAX' ]
 	windows_mod = import('windows')
 	if is_static
-		conf_data.set('CURL_STATICLIB', true)
+		args_ccomp_win += [ '-DCURL_STATICLIB' ]
 		if host_arch == 'x86_64'
-			conf_data.set('ZLIB_WINAPI', true)
+			args_ccomp_win += [ '-DZLIB_WINAPI' ]
 		endif
-	else
+	endif
+	if tpt_libs_static == 'dynamic'
 		foreach input_output_condition : tpt_libs.get_variable('config_dlls')
 			dll_input = input_output_condition[0]
 			dll_output = input_output_condition[1]
@@ -298,10 +338,12 @@ if host_platform == 'windows'
 				do_copy = true
 			endif
 			if do_copy
-				configure_file(input: dll_input, output: dll_output, copy: true)
+				fs.copyfile(dll_input, dll_output)
 			endif
 		endforeach
 	endif
+	project_c_args   += args_ccomp_win
+	project_cpp_args += args_ccomp_win
 endif
 
 project_inc = include_directories([ 'src', 'resources' ])
@@ -316,44 +358,11 @@ else
 	ident_platform = 'UNKNOWN'
 endif
 
-app_exe = get_option('app_exe')
-app_id = get_option('app_id')
-
-conf_data.set('LIN', host_platform == 'linux')
-conf_data.set('AND', host_platform == 'android')
-conf_data.set('WIN', host_platform == 'windows')
-conf_data.set('MACOSX', host_platform == 'darwin')
-conf_data.set('X86', is_x86)
-conf_data.set('X86_SSE3', x86_sse_level >= 30)
-conf_data.set('X86_SSE2', x86_sse_level >= 20)
-conf_data.set('X86_SSE', x86_sse_level >= 10)
-conf_data.set('_64BIT', is_64bit)
-conf_data.set('BETA', get_option('beta'))
-conf_data.set('NO_INSTALL_CHECK', not get_option('install_check'))
-conf_data.set('IGNORE_UPDATES', get_option('ignore_updates'))
-conf_data.set('MOD_ID', get_option('mod_id'))
-conf_data.set('DEBUG', is_debug)
-conf_data.set('SNAPSHOT', get_option('snapshot'))
-conf_data.set('SNAPSHOT_ID', get_option('snapshot_id'))
-conf_data.set('SERVER', '"@0@"'.format(get_option('server')))
-conf_data.set('STATICSERVER', '"@0@"'.format(get_option('static_server')))
-conf_data.set('IDENT_PLATFORM', '"@0@"'.format(ident_platform))
-conf_data.set('IDENT', '"@0@-@1@-@2@"'.format(host_arch, host_platform, host_libc).to_upper())
-conf_data.set('ENFORCE_HTTPS', enforce_https)
-conf_data.set('APPNAME', get_option('app_name'))
-conf_data.set('APPCOMMENT', get_option('app_comment'))
-conf_data.set('APPEXE', app_exe)
-conf_data.set('APPID', app_id)
-conf_data.set('APPDATA', get_option('app_data'))
-conf_data.set('APPVENDOR', get_option('app_vendor'))
-
-if get_option('update_server') != ''
-	conf_data.set('UPDATESERVER', '"@0@"'.format(get_option('update_server')))
-else
-	conf_data.set('UPDATESERVER', false)
-endif
-
+project_deps = []
 data_files = []
+powder_deps = []
+
+project_export_dynamic = false
 
 subdir('src')
 subdir('resources')
@@ -362,8 +371,30 @@ powder_files += data_files
 render_files += data_files
 font_files += data_files
 
+if host_platform == 'emscripten'
+	project_link_args += [
+		'-o', app_exe + '.js', # so we get a .wasm, and a .js
+	]
+endif
+if get_option('export_lua_symbols')
+	if is_static and lua_variant != 'none' and not project_export_dynamic
+		if host_platform == 'windows'
+			error('Lua symbols are currently impossible to export correctly on Windows')
+		elif c_compiler.has_link_argument('-Wl,--export-dynamic-symbol')
+			project_link_args += [
+				'-Wl,--export-dynamic-symbol=lua_*',
+				'-Wl,--export-dynamic-symbol=luaL_*',
+				'-Wl,--export-dynamic-symbol=luaopen_*',
+			]
+		else
+			warning('your linker does not support -Wl,--export-dynamic-symbol so Meson will be instructed to export all symbols in order to enable loading Lua shared modules, which may blow up the size of the resulting binary')
+			project_export_dynamic = true
+		endif
+	endif
+endif
+
 if get_option('build_powder')
-	powder_deps = [
+	powder_deps += project_deps + [
 		threads_dep,
 		zlib_dep,
 		png_dep,
@@ -378,7 +409,7 @@ if get_option('build_powder')
 		powder_sha = shared_library(
 			app_exe,
 			sources: powder_files,
-			include_directories: [ project_inc, powder_inc ],
+			include_directories: project_inc,
 			c_args: project_c_args,
 			cpp_args: project_cpp_args,
 			link_args: project_link_args,
@@ -389,18 +420,23 @@ if get_option('build_powder')
 		executable(
 			app_exe,
 			sources: powder_files,
-			include_directories: [ project_inc, powder_inc ],
+			include_directories: project_inc,
 			c_args: project_c_args,
 			cpp_args: project_cpp_args,
 			win_subsystem: is_debug ? 'console' : 'windows',
 			link_args: project_link_args,
 			dependencies: powder_deps,
+			export_dynamic: project_export_dynamic,
+			install: true,
 		)
 	endif
 endif
 
 if get_option('build_render')
-	render_deps = [
+	if host_platform == 'emscripten'
+		error('render does not target emscripten')
+	endif
+	render_deps = project_deps + [
 		threads_dep,
 		zlib_dep,
 		bzip2_dep,
@@ -414,16 +450,20 @@ if get_option('build_render')
 	executable(
 		'render',
 		sources: render_files,
-		include_directories: [ project_inc, render_inc ],
+		include_directories: project_inc,
 		c_args: project_c_args,
 		cpp_args: project_cpp_args,
 		link_args: render_link_args,
 		dependencies: render_deps,
+		export_dynamic: project_export_dynamic,
 	)
 endif
 
 if get_option('build_font')
-	font_deps = [
+	if host_platform == 'emscripten'
+		error('font does not target emscripten')
+	endif
+	font_deps = project_deps + [
 		threads_dep,
 		zlib_dep,
 		png_dep,
@@ -434,10 +474,11 @@ if get_option('build_font')
 	executable(
 		'font',
 		sources: font_files,
-		include_directories: [ project_inc, font_inc ],
+		include_directories: project_inc,
 		c_args: project_c_args,
 		cpp_args: project_cpp_args,
 		link_args: project_link_args,
 		dependencies: font_deps,
+		export_dynamic: project_export_dynamic,
 	)
 endif

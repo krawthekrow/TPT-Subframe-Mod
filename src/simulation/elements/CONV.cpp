@@ -6,7 +6,7 @@ void Element::Element_CONV()
 {
 	Identifier = "DEFAULT_PT_CONV";
 	Name = "CONV";
-	Colour = PIXPACK(0x0AAB0A);
+	Colour = 0x0AAB0A_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SPECIAL;
 	Enabled = 1;
@@ -32,6 +32,7 @@ void Element::Element_CONV()
 	Description = "Converter. Converts everything into whatever it first touches.";
 
 	Properties = TYPE_SOLID | PROP_NOCTYPEDRAW;
+	CarriesTypeIn = (1U << FIELD_CTYPE) | (1U << FIELD_TMP);
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;
@@ -48,39 +49,43 @@ void Element::Element_CONV()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	int ctype = TYP(parts[i].ctype);
-	if (ctype<=0 || ctype>=PT_NUM || !sim->elements[ctype].Enabled || ctype==PT_CONV)
+	if (ctype<=0 || ctype>=PT_NUM || !elements[ctype].Enabled || ctype==PT_CONV)
 	{
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK)
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				auto r = sim->photons[y+ry][x+rx];
+				if (!r)
+					r = pmap[y+ry][x+rx];
+				if (!r)
+					continue;
+				int rt = TYP(r);
+				if (rt != PT_CLNE && rt != PT_PCLN &&
+				    rt != PT_BCLN && rt != PT_STKM &&
+				    rt != PT_PBCN && rt != PT_STKM2 &&
+				    rt != PT_CONV && rt < PT_NUM)
 				{
-					r = sim->photons[y+ry][x+rx];
-					if (!r)
-						r = pmap[y+ry][x+rx];
-					if (!r)
-						continue;
-					int rt = TYP(r);
-					if (rt != PT_CLNE && rt != PT_PCLN &&
-					    rt != PT_BCLN && rt != PT_STKM &&
-					    rt != PT_PBCN && rt != PT_STKM2 &&
-					    rt != PT_CONV && rt < PT_NUM)
-					{
-						parts[i].ctype = rt;
-						if (rt == PT_LIFE)
-							parts[i].ctype |= PMAPID(parts[ID(r)].ctype);
-					}
+					parts[i].ctype = rt;
+					if (rt == PT_LIFE)
+						parts[i].ctype |= PMAPID(parts[ID(r)].ctype);
 				}
+			}
+		}
 	}
 	else
 	{
-		int restrictElement = sim->IsElement(parts[i].tmp) ? parts[i].tmp : 0;
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
+		int restrictElement = sd.IsElement(parts[i].tmp) ? parts[i].tmp : 0;
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
 				if (x+rx>=0 && y+ry>=0 && x+rx<XRES && y+ry<YRES)
 				{
-					r = sim->photons[y+ry][x+rx];
+					auto r = sim->photons[y+ry][x+rx];
 					if (!r || (restrictElement && ((TYP(r) == restrictElement) == (parts[i].tmp2 == 1))))
 						r = pmap[y+ry][x+rx];
 					if (!r || (restrictElement && ((TYP(r) == restrictElement) == (parts[i].tmp2 == 1))))
@@ -90,6 +95,8 @@ static int update(UPDATE_FUNC_ARGS)
 						sim->create_part(ID(r), x+rx, y+ry, TYP(parts[i].ctype), ID(parts[i].ctype));
 					}
 				}
+			}
+		}
 	}
 	return 0;
 }

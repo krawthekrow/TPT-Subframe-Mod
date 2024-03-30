@@ -1,6 +1,4 @@
-#ifndef PARTICLE_DEBUG_H
-#define PARTICLE_DEBUG_H
-
+#pragma once
 #include "DebugInfo.h"
 
 class Simulation;
@@ -16,10 +14,5 @@ public:
 	int UpdateSimUpToInterestingChange();
 	void Debug(int mode, int x, int y);
 	bool KeyPress(int key, int scan, bool shift, bool ctrl, bool alt, ui::Point currentMouse) override;
-	virtual ~ParticleDebug();
-private:
-	void updateSimUpTo(int i);
-	int updateSimOneParticle();
+	void Update() override;
 };
-
-#endif

@@ -1,13 +1,11 @@
 #include "simulation/ElementCommon.h"
-
-int Element_COAL_update(UPDATE_FUNC_ARGS);
-int Element_COAL_graphics(GRAPHICS_FUNC_ARGS);
+#include "COAL.h"
 
 void Element::Element_COAL()
 {
 	Identifier = "DEFAULT_PT_COAL";
 	Name = "COAL";
-	Colour = PIXPACK(0x222222);
+	Colour = 0x222222_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -58,7 +56,7 @@ int Element_COAL_update(UPDATE_FUNC_ARGS)
 		return 1;
 	} else if (parts[i].life < 100) {
 		parts[i].life--;
-		sim->create_part(-1, x + RNG::Ref().between(-1, 1), y + RNG::Ref().between(-1, 1), PT_FIRE);
+		sim->create_part(-1, x + sim->rng.between(-1, 1), y + sim->rng.between(-1, 1), PT_FIRE);
 	}
 	if (parts[i].type == PT_COAL)
 	{
@@ -97,8 +95,8 @@ int Element_COAL_graphics(GRAPHICS_FUNC_ARGS)
 		auto q = int((cpart->temp > 595.15f) ? 200.0f : cpart->temp - 395.15f);
 
 		*colr += int(sin(FREQUENCY*q) * 226);
-		*colg += int(sin(FREQUENCY*q*4.55 + 3.14) * 34);
-		*colb += int(sin(FREQUENCY*q*2.22 + 3.14) * 64);
+		*colg += int(sin(FREQUENCY*q*4.55 + TPT_PI_DBL) * 34);
+		*colb += int(sin(FREQUENCY*q*2.22 + TPT_PI_DBL) * 64);
 	}
 	return 0;
 }

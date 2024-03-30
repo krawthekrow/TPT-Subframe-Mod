@@ -1,27 +1,18 @@
 #include "SearchView.h"
-
 #include "SearchController.h"
 #include "SearchModel.h"
-
 #include "client/Client.h"
 #include "client/SaveInfo.h"
-
-#include "gui/interface/Keys.h"
 #include "gui/interface/SaveButton.h"
 #include "gui/interface/Button.h"
 #include "gui/interface/Label.h"
 #include "gui/interface/RichLabel.h"
 #include "gui/interface/Textbox.h"
 #include "gui/interface/Spinner.h"
-
-#include "PowderToy.h"
-#include "Config.h"
-
+#include "PowderToySDL.h"
 #include "graphics/Graphics.h"
-
-#ifdef GetUserName
-# undef GetUserName // dammit windows
-#endif
+#include "SimulationConfig.h"
+#include <SDL.h>
 
 SearchView::SearchView():
 	ui::Window(ui::Point(0, 0), ui::Point(WINDOWW, WINDOWH)),
@@ -39,11 +30,7 @@ SearchView::SearchView():
 	nextButton = new ui::Button(ui::Point(WINDOWW-52, WINDOWH-18), ui::Point(50, 16), String("Next ") + 0xE015);
 	previousButton = new ui::Button(ui::Point(2, WINDOWH-18), ui::Point(50, 16), 0xE016 + String(" Prev"));
 	tagsLabel  = new ui::Label(ui::Point(270, WINDOWH-18), ui::Point(WINDOWW-540, 16), "\boPopular Tags:");
-	try
-	{
-		motdLabel  = new ui::RichLabel(ui::Point(51, WINDOWH-18), ui::Point(WINDOWW-102, 16), Client::Ref().GetMessageOfTheDay());
-	}
-	catch (std::exception & e) { }
+	motdLabel  = new ui::RichLabel(ui::Point(51, WINDOWH-18), ui::Point(WINDOWW-102, 16), Client::Ref().GetMessageOfTheDay());
 
 	pageTextbox = new ui::Textbox(ui::Point(283, WINDOWH-18), ui::Point(41, 16), "");
 	pageTextbox->SetActionCallback({ [this] { textChanged(); } });
@@ -61,6 +48,7 @@ SearchView::SearchView():
 	searchField->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	searchField->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	searchField->SetActionCallback({ [this] { doSearch(); } });
+	searchField->SetLimit(100);
 	FocusComponent(searchField);
 
 	sortButton = new ui::Button(ui::Point(WINDOWW-140, 10), ui::Point(61, 17), "Sort");
@@ -216,7 +204,7 @@ void SearchView::Search(String query)
 
 void SearchView::NotifySortChanged(SearchModel * sender)
 {
-	if(sender->GetSort() == "best")
+	if(sender->GetSort() == http::sortByVotes)
 	{
 		sortButton->SetToggleState(false);
 		sortButton->SetText("By votes");
@@ -233,7 +221,7 @@ void SearchView::NotifySortChanged(SearchModel * sender)
 void SearchView::NotifyShowOwnChanged(SearchModel * sender)
 {
 	ownButton->SetToggleState(sender->GetShowOwn());
-	if(sender->GetShowOwn() || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationModerator)
+	if(sender->GetShowOwn() || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationMod)
 	{
 		unpublishSelected->Enabled = true;
 		removeSelected->Enabled = true;
@@ -253,7 +241,7 @@ void SearchView::NotifyShowFavouriteChanged(SearchModel * sender)
 		unpublishSelected->Enabled = false;
 		removeSelected->Enabled = false;
 	}
-	else if(sender->GetShowOwn() || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationModerator)
+	else if(sender->GetShowOwn() || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationMod)
 	{
 		unpublishSelected->Enabled = true;
 		removeSelected->Enabled = true;
@@ -276,7 +264,7 @@ void SearchView::NotifyPageChanged(SearchModel * sender)
 	{
 		String pageInfo = String::Build("of ", pageCount);
 		pageCountLabel->SetText(pageInfo);
-		int width = Graphics::textwidth(pageInfo);
+		int width = Graphics::TextSize(pageInfo).X - 1;
 
 		pageLabel->Position.X = WINDOWW/2-width-20;
 		pageTextbox->Position.X = WINDOWW/2-width+11;
@@ -328,7 +316,7 @@ void SearchView::CheckAccess()
 		favButton->Enabled = true;
 		favouriteSelected->Enabled = true;
 
-		if (Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationModerator)
+		if (Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationMod)
 		{
 			unpublishSelected->Enabled = true;
 			removeSelected->Enabled = true;
@@ -461,7 +449,7 @@ void SearchView::NotifySaveListChanged(SearchModel * sender)
 	int buttonWidth, buttonHeight, saveX = 0, saveY = 0, savesX = 5, savesY = 4, buttonPadding = 1;
 	int buttonAreaWidth, buttonAreaHeight, buttonXOffset, buttonYOffset;
 
-	std::vector<SaveInfo*> saves = sender->GetSaveList();
+	auto saves = sender->GetSaveList();
 	//string messageOfTheDay = sender->GetMessageOfTheDay();
 
 	if(sender->GetShowFavourite())
@@ -567,7 +555,7 @@ void SearchView::NotifySaveListChanged(SearchModel * sender)
 						saves[i]);
 			saveButton->AddContextMenu(0);
 			saveButton->SetActionCallback({
-				[this, saveButton] { c->OpenSave(saveButton->GetSave()->GetID(), saveButton->GetSave()->GetVersion()); },
+				[this, saveButton] { c->OpenSave(saveButton->GetSave()->GetID(), saveButton->GetSave()->GetVersion(), saveButton->CloneThumbnail()); },
 				[this, saveButton] { Search(String::Build("history:", saveButton->GetSave()->GetID())); },
 				[this, saveButton] { Search(String::Build("user:", saveButton->GetSave()->GetUserName().FromUtf8())); },
 				[this, saveButton] { c->Selected(saveButton->GetSave()->GetID(), saveButton->GetSelected()); }
@@ -651,7 +639,7 @@ void SearchView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctr
 {
 	if (repeat)
 		return;
-	if (key == SDLK_ESCAPE)
+	if (key == SDLK_ESCAPE || key == SDLK_AC_BACK)
 		c->Exit();
 	else if ((focusedComponent_ != pageTextbox && focusedComponent_ != searchField) && scan == SDL_SCANCODE_A && ctrl)
 		c->SelectAllSaves();

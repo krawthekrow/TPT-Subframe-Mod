@@ -8,7 +8,7 @@ void Element::Element_GRVT()
 {
 	Identifier = "DEFAULT_PT_GRVT";
 	Name = "GRVT";
-	Colour = PIXPACK(0x00EE76);
+	Colour = 0x00EE76_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;
@@ -59,7 +59,17 @@ static int update(UPDATE_FUNC_ARGS)
 	if (parts[i].tmp <= -100)
 		parts[i].tmp = -100;
 
-	sim->gravmap[(y/CELL)*(XRES/CELL)+(x/CELL)] = 0.2f*parts[i].tmp;
+	int under = pmap[y][x];
+	int utype = TYP(under);
+
+	//Randomly kill GRVT inside RSSS
+	if((utype == PT_RSSS) && sim->rng.chance(1, 5))
+	{
+		sim->kill_part(i);
+		return 1;
+	}
+
+	sim->gravmap[(y/CELL)*XCELLS+(x/CELL)] = 0.2f*parts[i].tmp;
 	return 0;
 }
 
@@ -76,8 +86,8 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	float a = RNG::Ref().between(0, 359) * 3.14159f / 180.0f;
-	sim->parts[i].life = 250 + RNG::Ref().between(0, 199);
+	float a = sim->rng.between(0, 359) * 3.14159f / 180.0f;
+	sim->parts[i].life = 250 + sim->rng.between(0, 199);
 	sim->parts[i].vx = 2.0f*cosf(a);
 	sim->parts[i].vy = 2.0f*sinf(a);
 }

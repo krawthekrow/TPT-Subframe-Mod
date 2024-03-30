@@ -1,42 +1,58 @@
-#ifndef COMMANDINTERFACE_H_
-#define COMMANDINTERFACE_H_
-#include "Config.h"
-
+#pragma once
+#include "CommandInterfacePtr.h"
+#include "common/ExplicitSingleton.h"
 #include "common/String.h"
-#include "lua/LuaEvents.h"
+#include "gui/game/GameControllerEvents.h"
+#include "TPTSTypes.h"
+#include <deque>
 
-class Event;
 class GameModel;
 class GameController;
 class Tool;
 
-class CommandInterface
+class CommandInterface : public ExplicitSingleton<CommandInterface>
 {
 protected:
 	String lastError;
 	GameModel * m;
 	GameController * c;
+
+
+	int PlainCommand(String command);
+	String PlainFormatCommand(String command);
+
 public:
+	CommandInterface(GameController *newGameController, GameModel *newGameModel);
+
 	enum LogType { LogError, LogWarning, LogNotice };
 	enum FormatType { FormatInt, FormatString, FormatChar, FormatFloat, FormatElement };
-	CommandInterface(GameController * c, GameModel * m);
 	int GetPropertyOffset(ByteString key, FormatType & format);
 	void Log(LogType type, String message);
 	//void AttachGameModel(GameModel * m);
 
-	virtual void OnTick() { }
-	virtual void OnPreHudDraw() { }
+	void OnTick();
+	void Init();
 
-	virtual bool HandleEvent(LuaEvents::EventTypes eventType, Event * event) { return true; }
+	bool HandleEvent(const GameControllerEvent &event);
 
-	virtual int Command(String command);
-	virtual String FormatCommand(String command);
+	int Command(String command);
+	String FormatCommand(String command);
 	void SetLastError(String err)
 	{
 		lastError = err;
 	}
 	String GetLastError();
-	virtual ~CommandInterface();
-};
 
-#endif /* COMMANDINTERFACE_H_ */
+	AnyType eval(std::deque<String> * words);
+	int parseNumber(String str);
+	AnyType tptS_set(std::deque<String> * words);
+	AnyType tptS_create(std::deque<String> * words);
+	AnyType tptS_delete(std::deque<String> * words);
+	AnyType tptS_load(std::deque<String> * words);
+	AnyType tptS_reset(std::deque<String> * words);
+	AnyType tptS_bubble(std::deque<String> * words);
+	AnyType tptS_quit(std::deque<String> * words);
+	ValueType testType(String word);
+
+	static CommandInterfacePtr Create(GameController *newGameController, GameModel *newGameModel);
+};

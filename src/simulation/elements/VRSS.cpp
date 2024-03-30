@@ -1,13 +1,13 @@
 #include "simulation/ElementCommon.h"
+#include "VIRS.h"
 
-int Element_VIRS_update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
 
 void Element::Element_VRSS()
 {
 	Identifier = "DEFAULT_PT_VRSS";
 	Name = "VRSS";
-	Colour = PIXPACK(0xD408CD);
+	Colour = 0xD408CD_rgb;
 	MenuVisible = 0;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -34,6 +34,7 @@ void Element::Element_VRSS()
 	Description = "Solid Virus. Turns everything it touches into virus.";
 
 	Properties = TYPE_SOLID|PROP_DEADLY;
+	CarriesTypeIn = 1U << FIELD_TMP2;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;

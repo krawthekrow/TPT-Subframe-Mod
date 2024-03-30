@@ -1,4 +1,0 @@
-#include "resource.h"
-
-IDI_ICON ICON DISCARDABLE "icon_exe.ico"
-IDI_DOC_ICON ICON DISCARDABLE "icon_cps.ico"

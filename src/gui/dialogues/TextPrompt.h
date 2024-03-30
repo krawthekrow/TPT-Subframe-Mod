@@ -1,6 +1,4 @@
-#ifndef TEXTPROMPT_H_
-#define TEXTPROMPT_H_
-
+#pragma once
 #include "gui/interface/Window.h"
 
 #include <functional>
@@ -27,8 +25,5 @@ public:
 	TextPrompt(String title, String message, String text, String placeholder, bool multiline, TextDialogueCallback callback_ = {});
 	virtual ~TextPrompt() = default;
 
-	static String Blocking(String title, String message, String text, String placeholder, bool multiline);
 	void OnDraw() override;
 };
-
-#endif /* TEXTPROMPT_H_ */

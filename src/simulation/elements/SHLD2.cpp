@@ -6,7 +6,7 @@ void Element::Element_SHLD2()
 {
 	Identifier = "DEFAULT_PT_SHLD2";
 	Name = "SHD2";
-	Colour = PIXPACK(0x777777);
+	Colour = 0x777777_rgb;
 	MenuVisible = 0;
 	MenuSection = SC_CRACKER2;
 	Enabled = 1;
@@ -47,12 +47,13 @@ void Element::Element_SHLD2()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, nnx, nny, rx, ry, np;
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 				{
 					if (parts[i].life>0)
@@ -61,27 +62,31 @@ static int update(UPDATE_FUNC_ARGS)
 				}
 				else if (TYP(r)==PT_SPRK&&parts[i].life==0)
 				{
-					if (RNG::Ref().chance(1, 8))
+					if (sim->rng.chance(1, 8))
 					{
 						sim->part_change_type(i,x,y,PT_SHLD3);
 						parts[i].life = 7;
 					}
-					for ( nnx=-1; nnx<2; nnx++)
-						for ( nny=-1; nny<2; nny++)
+					for (auto nnx = -1; nnx <= 1; nnx++)
+					{
+						for (auto nny = -1; nny <= 1; nny++)
 						{
 							if (!pmap[y+ry+nny][x+rx+nnx])
 							{
-								np = sim->create_part(-1,x+rx+nnx,y+ry+nny,PT_SHLD1);
+								auto np = sim->create_part(-1,x+rx+nnx,y+ry+nny,PT_SHLD1);
 								if (np<0) continue;
 								parts[np].life=7;
 							}
 						}
+					}
 				}
-				else if (TYP(r) == PT_SHLD4 && RNG::Ref().chance(2, 5))
+				else if (TYP(r) == PT_SHLD4 && sim->rng.chance(2, 5))
 				{
 					sim->part_change_type(i,x,y,PT_SHLD3);
 					parts[i].life = 7;
 				}
 			}
+		}
+	}
 	return 0;
 }

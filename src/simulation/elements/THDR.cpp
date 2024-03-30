@@ -7,7 +7,7 @@ void Element::Element_THDR()
 {
 	Identifier = "DEFAULT_PT_THDR";
 	Name = "THDR";
-	Colour = PIXPACK(0xFFFFA0);
+	Colour = 0xFFFFA0_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_EXPLOSIVE;
 	Enabled = 1;
@@ -50,17 +50,20 @@ void Element::Element_THDR()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rt;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	bool kill=false;
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				rt = TYP(r);
-				if ((sim->elements[TYP(r)].Properties&PROP_CONDUCTS) && parts[ID(r)].life==0 && !(rt==PT_WATR||rt==PT_SLTW) && parts[ID(r)].ctype!=PT_SPRK)
+				auto rt = TYP(r);
+				if ((elements[TYP(r)].Properties&PROP_CONDUCTS) && parts[ID(r)].life==0 && !(rt==PT_WATR||rt==PT_SLTW) && parts[ID(r)].ctype!=PT_SPRK)
 				{
 					parts[ID(r)].ctype = parts[ID(r)].type;
 					sim->part_change_type(ID(r),x+rx,y+ry,PT_SPRK);
@@ -70,15 +73,17 @@ static int update(UPDATE_FUNC_ARGS)
 				else if (rt!=PT_CLNE&&rt!=PT_THDR&&rt!=PT_SPRK&&rt!=PT_DMND&&rt!=PT_FIRE)
 				{
 					sim->pv[y/CELL][x/CELL] += 100.0f;
-					if (sim->legacy_enable && RNG::Ref().chance(1, 200))
+					if (sim->legacy_enable && sim->rng.chance(1, 200))
 					{
-						parts[i].life = RNG::Ref().between(120, 169);
+						parts[i].life = sim->rng.between(120, 169);
 						sim->part_change_type(i,x,y,PT_FIRE);
 					}
 					else
 						kill=true;
 				}
 			}
+		}
+	}
 	if (kill) {
 		sim->kill_part(i);
 		return 1;

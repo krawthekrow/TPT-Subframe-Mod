@@ -7,7 +7,7 @@ void Element::Element_DEST()
 {
 	Identifier = "DEFAULT_PT_DEST";
 	Name = "DEST";
-	Colour = PIXPACK(0xFF3311);
+	Colour = 0xFF3311_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_EXPLOSIVE;
 	Enabled = 1;
@@ -49,8 +49,10 @@ void Element::Element_DEST()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int rx = RNG::Ref().between(-2, 2);
-	int ry = RNG::Ref().between(-2, 2);
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	int rx = sim->rng.between(-2, 2);
+	int ry = sim->rng.between(-2, 2);
 	int r = pmap[y+ry][x+rx];
 	if (!r)
 		return 0;
@@ -60,13 +62,13 @@ static int update(UPDATE_FUNC_ARGS)
 
 	if (parts[i].life<=0 || parts[i].life>37)
 	{
-		parts[i].life = RNG::Ref().between(30, 49);
+		parts[i].life = sim->rng.between(30, 49);
 		sim->pv[y/CELL][x/CELL]+=60.0f;
 	}
 	if (rt == PT_PLUT || rt == PT_DEUT)
 	{
 		sim->pv[y/CELL][x/CELL]+=20.0f;
-		if (RNG::Ref().chance(1, 2))
+		if (sim->rng.chance(1, 2))
 		{
 			sim->create_part(ID(r), x+rx, y+ry, PT_NEUT);
 			parts[ID(r)].temp = MAX_TEMP;
@@ -78,14 +80,14 @@ static int update(UPDATE_FUNC_ARGS)
 	{
 		sim->create_part(ID(r), x+rx, y+ry, PT_PLSM);
 	}
-	else if (RNG::Ref().chance(1, 3))
+	else if (sim->rng.chance(1, 3))
 	{
 		sim->kill_part(ID(r));
-		parts[i].life -= 4*((sim->elements[rt].Properties&TYPE_SOLID)?3:1);
+		parts[i].life -= 4*((elements[rt].Properties&TYPE_SOLID)?3:1);
 		if (parts[i].life<=0)
 			parts[i].life=1;
 	}
-	else if (sim->elements[rt].HeatConduct)
+	else if (elements[rt].HeatConduct)
 		parts[ID(r)].temp = MAX_TEMP;
 	parts[i].temp=MAX_TEMP;
 	sim->pv[y/CELL][x/CELL]+=80.0f;

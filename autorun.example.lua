@@ -9,7 +9,7 @@ elem.property(elem.DEFAULT_PT_DRAY, "Colour", 0xFFFF00)
 tpt.set_bray_life_brightness_threshold(100)
 
 -- enable subframe debugging
-tpt.setdebug(0x8)
+tpt.debug(0x8)
 
 -- enable automatic particle order reloading
 tpt.autoreload_enable(1)

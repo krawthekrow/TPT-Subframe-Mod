@@ -4,13 +4,17 @@
 #include "LocalBrowserView.h"
 
 #include "client/Client.h"
+#include "client/GameSave.h"
+#include "client/SaveFile.h"
 #include "gui/dialogues/ConfirmPrompt.h"
+#include "gui/dialogues/TextPrompt.h"
+#include "gui/dialogues/ErrorMessage.h"
 #include "tasks/TaskWindow.h"
 #include "tasks/Task.h"
 
 #include "Controller.h"
 
-#include "common/tpt-minmax.h"
+#include <algorithm>
 
 LocalBrowserController::LocalBrowserController(std::function<void ()> onDone_):
 	HasDone(false)
@@ -22,17 +26,17 @@ LocalBrowserController::LocalBrowserController(std::function<void ()> onDone_):
 
 	onDone = onDone_;
 
-	browserModel->UpdateSavesList(1);
+	browserModel->UpdateSavesList(0);
 }
 
-void LocalBrowserController::OpenSave(SaveFile * save)
+void LocalBrowserController::OpenSave(int index)
 {
-	browserModel->SetSave(save);
+	browserModel->OpenSave(index);
 }
 
-SaveFile * LocalBrowserController::GetSave()
+std::unique_ptr<SaveFile> LocalBrowserController::TakeSave()
 {
-	return browserModel->GetSave();
+	return browserModel->TakeSave();
 }
 
 void LocalBrowserController::RemoveSelected()
@@ -65,7 +69,6 @@ void LocalBrowserController::removeSelectedC()
 		}
 		void after() override
 		{
-			Client::Ref().updateStamps();
 			c->RefreshSavesList();
 		}
 	};
@@ -74,12 +77,24 @@ void LocalBrowserController::removeSelectedC()
 	new TaskWindow("Removing stamps", new RemoveSavesTask(this, selected));
 }
 
-void LocalBrowserController::RescanStamps()
+void LocalBrowserController::RenameSelected()
 {
-	new ConfirmPrompt("Rescan", "Rescanning the stamps folder can find stamps added to the stamps folder or recover stamps when the stamps.def file has been lost or damaged. However, be warned that this will mess up the current sorting order", { [this] { rescanStampsC(); } });
+	ByteString save = browserModel->GetSelected()[0];
+
+	new TextPrompt("Rename stamp", "Enter a new name for the stamp:", "", "[new name]", false, { [this, save](const String &newName) {
+		if (newName.length() == 0)
+		{
+			new ErrorMessage("Error renaming stamp", "You have to specify the filename.");
+			return;
+		}
+
+		Client::Ref().RenameStamp(save, newName.ToUtf8());
+
+		RefreshSavesList();
+	} });
 }
 
-void LocalBrowserController::rescanStampsC()
+void LocalBrowserController::RescanStamps()
 {
 	browserModel->RescanStamps();
 	browserModel->UpdateSavesList(browserModel->GetPageNum());
@@ -98,20 +113,20 @@ void LocalBrowserController::ClearSelection()
 
 void LocalBrowserController::SetPage(int page)
 {
-	if (page != browserModel->GetPageNum() && page > 0 && page <= browserModel->GetPageCount())
+	if (page != browserModel->GetPageNum() && page >= 0 && page < browserModel->GetPageCount())
 		browserModel->UpdateSavesList(page);
 }
 
 void LocalBrowserController::SetPageRelative(int offset)
 {
-	int page = std::min(std::max(browserModel->GetPageNum() + offset, 1), browserModel->GetPageCount());
+	int page = std::max(std::min(browserModel->GetPageNum() + offset, browserModel->GetPageCount() - 1), 0);
 	if (page != browserModel->GetPageNum())
 		browserModel->UpdateSavesList(page);
 }
 
 void LocalBrowserController::Update()
 {
-	if(browserModel->GetSave())
+	if (browserModel->GetSave())
 	{
 		Exit();
 	}
@@ -145,8 +160,10 @@ void LocalBrowserController::Exit()
 
 LocalBrowserController::~LocalBrowserController()
 {
-	browserView->CloseActiveWindow();
 	delete browserModel;
-	delete browserView;
+	if (browserView->CloseActiveWindow())
+	{
+		delete browserView;
+	}
 }
 

@@ -1,7 +1,4 @@
-#ifndef STYLE_H_
-#define STYLE_H_
-#include "Config.h"
-
+#pragma once
 #include "gui/interface/Colour.h"
 
 namespace style
@@ -26,5 +23,3 @@ namespace style
 	{
 	};
 }
-
-#endif

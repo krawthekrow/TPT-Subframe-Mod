@@ -3,13 +3,14 @@
 #include "Task.h"
 
 #include "gui/interface/Label.h"
+#include "gui/interface/ProgressBar.h"
 #include "gui/interface/Engine.h"
 #include "gui/dialogues/ErrorMessage.h"
 #include "gui/Style.h"
 
 #include "graphics/Graphics.h"
 
-#include "common/tpt-minmax.h"
+#include <algorithm>
 
 TaskWindow::TaskWindow(String title_, Task * task_, bool closeOnDone):
 	ui::Window(ui::Point(-1, -1), ui::Point(240, 60)),
@@ -31,6 +32,9 @@ TaskWindow::TaskWindow(String title_, Task * task_, bool closeOnDone):
 	statusLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	statusLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(statusLabel);
+
+	progressBar = new ui::ProgressBar(Position + Vec2{ 1, Size.Y-16 }, Vec2{ Size.X, 17 });
+	AddComponent(progressBar);
 
 	MakeActiveWindow();
 
@@ -71,6 +75,8 @@ void TaskWindow::NotifyProgress(Task * task)
 		progressStatus = String::Build(progress, "%");
 	else
 		progressStatus = "Please wait...";
+	progressBar->SetProgress(progress);
+	progressBar->SetStatus(progressStatus);
 }
 
 void TaskWindow::OnTick(float dt)
@@ -86,44 +92,6 @@ void TaskWindow::OnTick(float dt)
 void TaskWindow::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
-
-	g->draw_line(Position.X, Position.Y + Size.Y-17, Position.X + Size.X - 1, Position.Y + Size.Y-17, 255, 255, 255, 255);
-
-	ui::Colour progressBarColour = style::Colour::WarningTitle;
-
-	if(progress!=-1)
-	{
-		if(progress > 0)
-		{
-			if(progress > 100)
-				progress = 100;
-			float size = float(Size.X-4)*(float(progress)/100.0f); // TIL...
-			size = std::min(std::max(size, 0.0f), float(Size.X-4));
-			g->fillrect(Position.X + 2, Position.Y + Size.Y-15, int(size), 13, progressBarColour.Red, progressBarColour.Green, progressBarColour.Blue, 255);
-		}
-	} else {
-		int size = 40, rsize = 0;
-		float position = float(Size.X-4)*(intermediatePos/100.0f);
-		if(position + size - 1 > Size.X-4)
-		{
-			size = (Size.X-4)-int(position)+1;
-			rsize = 40-size;
-		}
-		g->fillrect(Position.X + 2 + int(position), Position.Y + Size.Y-15, size, 13, progressBarColour.Red, progressBarColour.Green, progressBarColour.Blue, 255);
-		if(rsize)
-		{
-			g->fillrect(Position.X + 2, Position.Y + Size.Y-15, rsize, 13, progressBarColour.Red, progressBarColour.Green, progressBarColour.Blue, 255);
-		}
-	}
-	if(progress<50)
-		g->drawtext(Position.X + ((Size.X-Graphics::textwidth(progressStatus))/2), Position.Y + Size.Y-13, progressStatus, 255, 255, 255, 255);
-	else
-		g->drawtext(Position.X + ((Size.X-Graphics::textwidth(progressStatus))/2), Position.Y + Size.Y-13, progressStatus, 0, 0, 0, 255);
+	g->DrawFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb);
+	g->DrawRect(RectSized(Position, Size), 0xFFFFFF_rgb);
 }
-
-TaskWindow::~TaskWindow() {
-	delete task;
-}
-

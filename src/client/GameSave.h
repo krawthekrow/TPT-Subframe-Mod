@@ -1,12 +1,15 @@
 #pragma once
-#include "Config.h"
-
-#include <vector>
+#include "common/Plane.h"
 #include "common/String.h"
+#include "common/tpt-rand.h"
+#include "common/Version.h"
 #include "simulation/Sign.h"
 #include "simulation/Particle.h"
+#include "simulation/MissingElements.h"
 #include "Misc.h"
-
+#include "SimulationConfig.h"
+#include <vector>
+#include <array>
 #include <json/json.h>
 
 struct sign;
@@ -53,57 +56,39 @@ public:
 	}
 };
 
-template<class Item>
-struct Plane
-{
-	int width = 0;
-	int height = 0;
-	std::vector<Item> items;
-	// invariant: items.size() == width * height
-
-	Item *operator [](int y)
-	{
-		return &items[y * width];
-	}
-
-	const Item *operator [](int y) const
-	{
-		return &items[y * width];
-	}
-
-	Plane() = default;
-	Plane(int newWidth, int newHeight, Item defaultVal) : width(newWidth), height(newHeight), items(width * height, defaultVal)
-	{
-	}
-};
-
 class GameSave
 {
 	// number of pixels translated. When translating CELL pixels, shift all CELL grids
-	vector2d translated = { 0, 0 };
 	void readOPS(const std::vector<char> &data);
 	void readPSv(const std::vector<char> &data);
 	std::pair<bool, std::vector<char>> serialiseOPS() const;
 
+	void MapPalette();
+
 public:
-	int blockWidth = 0;
-	int blockHeight = 0;
+	Vec2<int> blockSize = { 0, 0 };
 	bool fromNewerVersion = false;
-	int majorVersion = 0;
-	int minorVersion = 0;
+	Version<2> version{};
 	bool hasPressure = false;
 	bool hasAmbientHeat = false;
+	bool hasBlockAirMaps = false; // only written by readOPS, never read
+	bool ensureDeterminism = false; // only taken seriously by serializeOPS; readOPS may set this even if the save does not have everything required for determinism
+	bool hasRngState = false; // only written by readOPS, never read
+	RNG::State rngState;
+	uint64_t frameCount = 0;
 
 	//Simulation data
 	int particlesCount = 0;
 	std::vector<Particle> particles;
-	Plane<unsigned char> blockMap;
-	Plane<float> fanVelX;
-	Plane<float> fanVelY;
-	Plane<float> pressure;
-	Plane<float> velocityX;
-	Plane<float> velocityY;
-	Plane<float> ambientHeat;
+	PlaneAdapter<std::vector<unsigned char>> blockMap;
+	PlaneAdapter<std::vector<float>> fanVelX;
+	PlaneAdapter<std::vector<float>> fanVelY;
+	PlaneAdapter<std::vector<float>> pressure;
+	PlaneAdapter<std::vector<float>> velocityX;
+	PlaneAdapter<std::vector<float>> velocityY;
+	PlaneAdapter<std::vector<float>> ambientHeat;
+	PlaneAdapter<std::vector<unsigned char>> blockAir;
+	PlaneAdapter<std::vector<unsigned char>> blockAirh;
 
 	//Simulation Options
 	bool waterEEnabled = false;
@@ -117,6 +102,9 @@ public:
 	int airMode = 0;
 	float ambientAirTemp = R_TEMP + 273.15f;
 	int edgeMode = 0;
+	bool wantAuthors = true;
+
+	MissingElements missingElements;
 
 	//Signs
 	std::vector<sign> signs;
@@ -131,20 +119,15 @@ public:
 
 	int pmapbits = 8; // default to 8 bits for older saves
 
-	GameSave(int width, int height);
-	GameSave(const std::vector<char> &data);
-	void setSize(int width, int height);
+	GameSave(Vec2<int> newBlockSize);
+	GameSave(const std::vector<char> &data, bool newWantAuthors = true);
+	void setSize(Vec2<int> newBlockSize);
 	// return value is [ fakeFromNewerVersion, gameData ]
 	std::pair<bool, std::vector<char>> Serialise() const;
-	vector2d Translate(vector2d translate);
-	void Transform(matrix2d transform, vector2d translate);
-	void Transform(matrix2d transform, vector2d translate, vector2d translateReal, int newWidth, int newHeight);
+	void Transform(Mat2<int> transform, Vec2<int> nudge);
 
 	void Expand(const std::vector<char> &data);
 
-	static bool TypeInCtype(int type, int ctype);
-	static bool TypeInTmp(int type);
-	static bool TypeInTmp2(int type, int tmp2);
 	static bool PressureInTmp3(int type);
 
 	GameSave& operator << (Particle &v);

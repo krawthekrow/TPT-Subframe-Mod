@@ -1,139 +1,9 @@
 #include "Misc.h"
-
-#include "Config.h"
-
+#include "common/String.h"
 #include <cstring>
 #include <sys/types.h>
 #include <cmath>
-
-#include "common/tpt-minmax.h"
-#include "common/String.h"
-
-const static char hex[] = "0123456789ABCDEF";
-void strcaturl(char *dst, char *src)
-{
-	char *d;
-	unsigned char *s;
-
-	for (d=dst; *d; d++) ;
-
-	for (s=(unsigned char *)src; *s; s++)
-	{
-		if ((*s>='0' && *s<='9') ||
-		        (*s>='a' && *s<='z') ||
-		        (*s>='A' && *s<='Z'))
-			*(d++) = *s;
-		else
-		{
-			*(d++) = '%';
-			*(d++) = hex[*s>>4];
-			*(d++) = hex[*s&15];
-		}
-	}
-	*d = 0;
-}
-
-void strappend(char *dst, const char *src)
-{
-	char *d;
-	unsigned char *s;
-
-	for (d=dst; *d; d++) ;
-
-	for (s=(unsigned char *)src; *s; s++)
-	{
-		*(d++) = *s;
-	}
-	*d = 0;
-}
-
-void *file_load(char *fn, int *size)
-{
-	FILE *f = fopen(fn, "rb");
-	void *s;
-
-	if (!f)
-		return NULL;
-	fseek(f, 0, SEEK_END);
-	*size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	s = malloc(*size);
-	if (!s)
-	{
-		fclose(f);
-		return NULL;
-	}
-	int readsize = fread(s, *size, 1, f);
-	fclose(f);
-	if (readsize != 1)
-	{
-		free(s);
-		return NULL;
-	}
-	return s;
-}
-
-matrix2d m2d_multiply_m2d(matrix2d m1, matrix2d m2)
-{
-	matrix2d result = {
-		m1.a*m2.a+m1.b*m2.c, m1.a*m2.b+m1.b*m2.d,
-		m1.c*m2.a+m1.d*m2.c, m1.c*m2.b+m1.d*m2.d
-	};
-	return result;
-}
-vector2d m2d_multiply_v2d(matrix2d m, vector2d v)
-{
-	vector2d result = {
-		m.a*v.x+m.b*v.y,
-		m.c*v.x+m.d*v.y
-	};
-	return result;
-}
-matrix2d m2d_multiply_float(matrix2d m, float s)
-{
-	matrix2d result = {
-		m.a*s, m.b*s,
-		m.c*s, m.d*s,
-	};
-	return result;
-}
-
-vector2d v2d_multiply_float(vector2d v, float s)
-{
-	vector2d result = {
-		v.x*s,
-		v.y*s
-	};
-	return result;
-}
-
-vector2d v2d_add(vector2d v1, vector2d v2)
-{
-	vector2d result = {
-		v1.x+v2.x,
-		v1.y+v2.y
-	};
-	return result;
-}
-vector2d v2d_sub(vector2d v1, vector2d v2)
-{
-	vector2d result = {
-		v1.x-v2.x,
-		v1.y-v2.y
-	};
-	return result;
-}
-
-matrix2d m2d_new(float me0, float me1, float me2, float me3)
-{
-	matrix2d result = {me0,me1,me2,me3};
-	return result;
-}
-vector2d v2d_new(float x, float y)
-{
-	vector2d result = {x, y};
-	return result;
-}
+#include <algorithm>
 
 void HSV_to_RGB(int h,int s,int v,int *r,int *g,int *b)//convert 0-255(0-360 for H) HSV values to 0-255 RGB
 {
@@ -215,9 +85,6 @@ void membwand(void * destv, void * srcv, size_t destsize, size_t srcsize)
 		dest[i] = dest[i] & src[i%srcsize];
 	}
 }
-
-vector2d v2d_zero = {0,0};
-matrix2d m2d_identity = {1,0,0,1};
 
 bool byteStringEqualsString(const ByteString &str, const char *data, size_t size)
 {

@@ -2,8 +2,6 @@
 
 #include "ContextMenu.h"
 #include "Format.h"
-#include "Keys.h"
-#include "Mouse.h"
 
 #include "client/Client.h"
 #include "client/ThumbnailRendererTask.h"
@@ -13,12 +11,13 @@
 #include "gui/dialogues/ErrorMessage.h"
 #include "graphics/Graphics.h"
 
+#include "SimulationConfig.h"
+#include <SDL.h>
+
 namespace ui {
 
 SaveButton::SaveButton(Point position, Point size) :
 	Component(position, size),
-	file(nullptr),
-	save(nullptr),
 	wantsDraw(false),
 	triedThumbnail(false),
 	isMouseInsideAuthor(false),
@@ -32,16 +31,16 @@ SaveButton::SaveButton(Point position, Point size) :
 {
 }
 
-SaveButton::SaveButton(Point position, Point size, SaveInfo * save_) : SaveButton(position, size)
+SaveButton::SaveButton(Point position, Point size, SaveInfo *newSave /* non-owning */) : SaveButton(position, size)
 {
-	save = save_;
+	save = newSave;
 	if(save)
 	{
 		name = save->name;
-		if(Graphics::textwidth(name) > Size.X)
+		if (Graphics::TextSize(name).X - 1 > Size.X)
 		{
-			int position = Graphics::textwidthx(name, Size.X - 22);
-			name = name.erase(position, name.length()-position);
+			auto it = Graphics::TextFit(name, Size.X - (Appearance.icon ? 38 : 22));
+			name.erase(it, name.end());
 			name += "...";
 		}
 
@@ -93,16 +92,16 @@ SaveButton::SaveButton(Point position, Point size, SaveInfo * save_) : SaveButto
 	}
 }
 
-SaveButton::SaveButton(Point position, Point size, SaveFile * file_) : SaveButton(position, size)
+SaveButton::SaveButton(Point position, Point size, SaveFile *newFile /* non-owning */) : SaveButton(position, size)
 {
-	file = file_;
+	file = newFile;
 	if(file)
 	{
 		name = file->GetDisplayName();
-		if(Graphics::textwidth(name) > Size.X)
+		if (Graphics::TextSize(name).X - 1 > Size.X)
 		{
-			int position = Graphics::textwidthx(name, Size.X - 22);
-			name = name.erase(position, name.length()-position);
+			auto it = Graphics::TextFit(name, Size.X - (Appearance.icon ? 38 : 22));
+			name.erase(it, name.end());
 			name += "...";
 		}
 	}
@@ -114,13 +113,6 @@ SaveButton::~SaveButton()
 	{
 		thumbnailRenderer->Abandon();
 	}
-	delete save;
-	delete file;
-}
-
-void SaveButton::OnResponse(std::unique_ptr<VideoBuffer> Thumbnail)
-{
-	thumbnail = std::move(Thumbnail);
 }
 
 void SaveButton::Tick(float dt)
@@ -135,26 +127,37 @@ void SaveButton::Tick(float dt)
 			{
 				if(save->GetGameSave())
 				{
-					thumbnailRenderer = new ThumbnailRendererTask(save->GetGameSave(), thumbBoxSize.X, thumbBoxSize.Y);
+					thumbnailRenderer = new ThumbnailRendererTask(*save->GetGameSave(), thumbBoxSize, true, true);
 					thumbnailRenderer->Start();
 					triedThumbnail = true;
 				}
 				else if (save->GetID())
 				{
-					RequestSetup(save->GetID(), save->GetVersion(), thumbBoxSize.X, thumbBoxSize.Y);
-					RequestStart();
+					thumbnailRequest = std::make_unique<http::ThumbnailRequest>(save->GetID(), save->GetVersion(), thumbBoxSize);
+					thumbnailRequest->Start();
 					triedThumbnail = true;
 				}
 			}
 			else if (file && file->GetGameSave())
 			{
-				thumbnailRenderer = new ThumbnailRendererTask(file->GetGameSave(), thumbBoxSize.X, thumbBoxSize.Y, true, true, false);
+				thumbnailRenderer = new ThumbnailRendererTask(*file->GetGameSave(), thumbBoxSize, true, false);
 				thumbnailRenderer->Start();
 				triedThumbnail = true;
 			}
 		}
 
-		RequestPoll();
+		if (thumbnailRequest && thumbnailRequest->CheckDone())
+		{
+			try
+			{
+				thumbnail = thumbnailRequest->Finish();
+			}
+			catch (const http::RequestError &ex)
+			{
+				// TODO: handle
+			}
+			thumbnailRequest.reset();
+		}
 
 		if (thumbnailRenderer)
 		{
@@ -168,7 +171,7 @@ void SaveButton::Tick(float dt)
 
 		if (thumbnail && file)
 		{
-			thumbSize = ui::Point(thumbnail->Width, thumbnail->Height);
+			thumbSize = thumbnail->Size();
 		}
 	}
 	if (file && !wantsDraw && !thumbnailRenderer)
@@ -188,117 +191,84 @@ void SaveButton::Draw(const Point& screenPos)
 
 	if(selected && selectable)
 	{
-		g->fillrect(screenPos.X, screenPos.Y, Size.X, Size.Y, 100, 170, 255, 100);
+		g->BlendFilledRect(RectSized(screenPos, Size), 0x64AAFF_rgb .WithAlpha(100));
 	}
 
 	if (thumbnail)
 	{
 		//thumbBoxSize = ui::Point(thumbnail->Width, thumbnail->Height);
-		if (save && save->id)
-			g->draw_image(thumbnail.get(), screenPos.X-3+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, 255);
-		else
-			g->draw_image(thumbnail.get(), screenPos.X+(Size.X-thumbSize.X)/2, screenPos.Y+(Size.Y-21-thumbSize.Y)/2, 255);
+		auto *tex = thumbnail.get();
+		auto space = Size - Vec2{ 0, 21 };
+		g->BlendImage(tex->Data(), 255, RectSized(screenPos + ((save && save->id) ? ((space - thumbBoxSize) / 2 - Vec2{ 3, 0 }) : (space - thumbSize) / 2), tex->Size()));
 	}
-	else if (file && !file->GetGameSave())
-		g->drawtext(screenPos.X+(Size.X-Graphics::textwidth("Error loading save"))/2, screenPos.Y+(Size.Y-28)/2, "Error loading save", 180, 180, 180, 255);
+	else if (file && !file->LazyGetGameSave())
+		g->BlendText(screenPos + Vec2{ (Size.X-(Graphics::TextSize("Error loading save").X - 1))/2, (Size.Y-28)/2 }, "Error loading save", 0xB4B4B4_rgb .WithAlpha(255));
 	if(save)
 	{
 		if(save->id)
 		{
-			if(isMouseInside)
-			{
-				g->drawrect(screenPos.X-3+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 210, 230, 255, 255);
-				g->drawrect(screenPos.X-4+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, 7, thumbBoxSize.Y, 210, 230, 255, 255);
-			}
-			else
-			{
-				g->drawrect(screenPos.X-3+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 180, 180, 180, 255);
-				g->drawrect(screenPos.X-4+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, 7, thumbBoxSize.Y, 180, 180, 180, 255);
-			}
+			g->DrawRect(RectSized(screenPos + Vec2{                - 3, 0 } + (Size - thumbBoxSize - Vec2{ 0, 21 }) / 2,              thumbBoxSize), isMouseInside ? 0xD2E6FF_rgb : 0xB4B4B4_rgb);
+			g->DrawRect(RectSized(screenPos + Vec2{ thumbBoxSize.X - 4, 0 } + (Size - thumbBoxSize - Vec2{ 0, 21 }) / 2, Vec2{ 7, thumbBoxSize.Y }), isMouseInside ? 0xD2E6FF_rgb : 0xB4B4B4_rgb);
 
-			g->fillrect(screenPos.X-3+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+1+(Size.Y-20-thumbBoxSize.Y)/2, 5, (thumbBoxSize.Y+1)/2-1, 0, 107, 10, 255);
-			g->fillrect(screenPos.X-3+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-20)/2, 5, thumbBoxSize.Y/2-1, 107, 10, 0, 255);
+			g->DrawFilledRect(RectSized(screenPos + Vec2{ -3+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, 1+(Size.Y-20-thumbBoxSize.Y)/2 }, Vec2{ 5, (thumbBoxSize.Y+1)/2-1 }), 0x006B0A_rgb);
+			g->DrawFilledRect(RectSized(screenPos + Vec2{ -3+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, (Size.Y-20)/2 }, Vec2{ 5, thumbBoxSize.Y/2-1 }), 0x6B0A00_rgb);
 
-			g->fillrect(screenPos.X-2+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-20)/2-voteBarHeightUp, 3, voteBarHeightUp, 57, 187, 57, 255); //green
-			g->fillrect(screenPos.X-2+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-20)/2, 3, voteBarHeightDown, 187, 57, 57, 255); //red
+			g->DrawFilledRect(RectSized(screenPos + Vec2{ -2+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, (Size.Y-20)/2-voteBarHeightUp }, Vec2{ 3, voteBarHeightUp }), 0x39BB39_rgb); //green
+			g->DrawFilledRect(RectSized(screenPos + Vec2{ -2+thumbBoxSize.X+(Size.X-thumbBoxSize.X)/2, (Size.Y-20)/2 }, Vec2{ 3, voteBarHeightDown }), 0xBB3939_rgb); //red
 		}
 		else
 		{
-			if(isMouseInside)
-				g->drawrect(screenPos.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 210, 230, 255, 255);
-			else
-				g->drawrect(screenPos.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 180, 180, 180, 255);
+			g->DrawRect(RectSized(screenPos + (Size - thumbBoxSize - Vec2{ 0, 21 }) / 2, thumbBoxSize), isMouseInside ? 0xD2E6FF_rgb : 0xB4B4B4_rgb);
 		}
 
-		if(isMouseInside && !isMouseInsideAuthor)
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(name))/2, screenPos.Y+Size.Y - 21, name, 255, 255, 255, 255);
-		else
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(name))/2, screenPos.Y+Size.Y - 21, name, 180, 180, 180, 255);
-
-		if(isMouseInsideAuthor)
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(save->userName.FromUtf8()))/2, screenPos.Y+Size.Y - 10, save->userName.FromUtf8(), 200, 230, 255, 255);
-		else
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(save->userName.FromUtf8()))/2, screenPos.Y+Size.Y - 10, save->userName.FromUtf8(), 100, 130, 160, 255);
+		g->BlendText(screenPos + Vec2{ (Size.X-(Graphics::TextSize(name).X - 1))/2, Size.Y - 21 }, name, (isMouseInside && !isMouseInsideAuthor) ? 0xFFFFFF_rgb .WithAlpha(255) : 0xB4B4B4_rgb .WithAlpha(255));
+		g->BlendText(screenPos + Vec2{ (Size.X-(Graphics::TextSize(save->userName.FromUtf8()).X - 1))/2, Size.Y - 10 }, save->userName.FromUtf8(), isMouseInsideAuthor ? 0xC8E6FF_rgb .WithAlpha(255) : 0x6482A0_rgb .WithAlpha(255));
 		if (showVotes)// && !isMouseInside)
 		{
-			int x = screenPos.X-7+(Size.X-thumbBoxSize.X)/2+thumbBoxSize.X-Graphics::textwidth(votesBackground);
+			int x = screenPos.X-7+(Size.X-thumbBoxSize.X)/2+thumbBoxSize.X-(Graphics::TextSize(votesBackground).X - 1);
 			int y = screenPos.Y-23+(Size.Y-thumbBoxSize.Y)/2+thumbBoxSize.Y;
-			g->drawtext(x, y, votesBackground, 16, 72, 16, 255);
-			g->drawtext(x, y, votesBackground2, 192, 192, 192, 255);
-			g->drawtext(x+3, y, votesString, 255, 255, 255, 255);
+			g->BlendText({ x, y }, votesBackground, 0x104810_rgb .WithAlpha(255));
+			g->BlendText({ x, y }, votesBackground2, 0xC0C0C0_rgb .WithAlpha(255));
+			g->BlendText({ x+3, y }, votesString, 0xFFFFFF_rgb .WithAlpha(255));
 		}
-		if (isMouseInsideHistory && showVotes)
+		if (isMouseInside)
 		{
 			int x = screenPos.X;
 			int y = screenPos.Y-15+(Size.Y-thumbBoxSize.Y)/2+thumbBoxSize.Y;
-			g->fillrect(x+1, y+1, 7, 8, 255, 255, 255, 255);
-			if (isMouseInsideHistory) {
-				g->drawtext(x, y, 0xE026, 200, 100, 80, 255);
-			} else {
-				g->drawtext(x, y, 0xE026, 160, 70, 50, 255);
-			}
+			g->DrawFilledRect(RectSized(Vec2{ x+1, y+1 }, Vec2{ 7, 8 }), 0xFFFFFF_rgb);
+			g->BlendText({ x, y }, 0xE026, isMouseInsideHistory ? 0xC86450_rgb .WithAlpha(255) : 0xA04632_rgb .WithAlpha(255));
 		}
 		if (!save->GetPublished())
 		{
-			g->drawtext(screenPos.X, screenPos.Y-2, 0xE04D, 255, 255, 255, 255);
-			g->drawtext(screenPos.X, screenPos.Y-2, 0xE04E, 212, 151, 81, 255);
+			g->BlendText(screenPos - Vec2{ 0, 2 }, 0xE04D, 0xFFFFFF_rgb .WithAlpha(255));
+			g->BlendText(screenPos - Vec2{ 0, 2 }, 0xE04E, 0xD49751_rgb .WithAlpha(255));
 		}
 	}
 	else if (file)
 	{
-		if (isMouseInside)
-			g->drawrect(screenPos.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 210, 230, 255, 255);
-		else
-			g->drawrect(screenPos.X+(Size.X-thumbBoxSize.X)/2, screenPos.Y+(Size.Y-21-thumbBoxSize.Y)/2, thumbBoxSize.X, thumbBoxSize.Y, 180, 180, 180, 255);
+		g->DrawRect(RectSized(screenPos + (Size - thumbBoxSize- Vec2{ 0, 21 }) / 2, thumbBoxSize), isMouseInside ? 0xD2E6FF_rgb : 0xB4B4B4_rgb);
 		if (thumbSize.X)
-			g->xor_rect(screenPos.X+(Size.X-thumbSize.X)/2, screenPos.Y+(Size.Y-21-thumbSize.Y)/2, thumbSize.X, thumbSize.Y);
+			g->XorDottedRect(RectSized(screenPos + (Size - thumbSize - Vec2{ 0, 21 }) / 2, thumbSize));
 
-		if (isMouseInside)
-		{
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(name))/2, screenPos.Y+Size.Y - 21, name, 255, 255, 255, 255);
-		}
-		else
-		{
-			g->drawtext(screenPos.X+(Size.X-Graphics::textwidth(name))/2, screenPos.Y+Size.Y - 21, name, 180, 180, 180, 255);
-		}
+		g->BlendText(screenPos + Vec2{ (Size.X-(Graphics::TextSize(name).X - 1))/2, Size.Y - 21 }, name, isMouseInside ? 0xFFFFFF_rgb .WithAlpha(255) : 0xB4B4B4_rgb .WithAlpha(255));
 	}
 
 	if(isMouseInside && selectable)
 	{
-		g->clearrect(screenPos.X+(Size.X-20), screenPos.Y+6, 14, 14);
-		g->drawrect(screenPos.X+(Size.X-20), screenPos.Y+6, 14, 14, 255, 255, 255, 255);
+		g->DrawFilledRect(RectSized(screenPos + Vec2{ Size.X - 19, 7 }, Vec2{ 13, 13 }), 0x000000_rgb);
+		g->DrawRect(RectSized(screenPos + Vec2{ Size.X-20, 6 }, Vec2{ 14, 14 }), 0xFFFFFF_rgb);
 		if(selected)
-			g->fillrect(screenPos.X+(Size.X-18), screenPos.Y+8, 10, 10, 255, 255, 255, 255);
+			g->DrawFilledRect(RectSized(screenPos + Vec2{ Size.X-18, 8 }, Vec2{ 10, 10 }), 0xFFFFFF_rgb);
 	}
 }
 
-void SaveButton::OnMouseUnclick(int x, int y, unsigned int button)
+void SaveButton::OnMouseClick(int x, int y, unsigned int button)
 {
 	if(button != 1)
 	{
 		return; //left click only!
 	}
-	if (file && !file->GetGameSave())
+	if (file && !file->LazyGetGameSave())
 	{
 		new ErrorMessage("Error loading save", file->GetError());
 		return;
@@ -363,36 +333,40 @@ void SaveButton::OnContextMenuAction(int item)
 	}
 }
 
-void SaveButton::OnMouseClick(int x, int y, unsigned int button)
+void SaveButton::OnMouseDown(int x, int y, unsigned int button)
 {
-	if(button == SDL_BUTTON_RIGHT)
+	if (MouseDownInside)
 	{
-		if(menu)
-			menu->Show(GetScreenPos() + ui::Point(x, y));
-	}
-	else
-	{
-		isButtonDown = true;
-		if(button !=1 && selectable)
+		if(button == SDL_BUTTON_RIGHT)
 		{
-			selected = !selected;
-			DoSelection();
+			if(menu)
+				menu->Show(GetContainerPos() + ui::Point(x, y));
 		}
+		else
+		{
+			isButtonDown = true;
+			if(button !=1 && selectable)
+			{
+				selected = !selected;
+				DoSelection();
+			}
 
+		}
 	}
 }
 
-void SaveButton::OnMouseMovedInside(int x, int y, int dx, int dy)
+void SaveButton::OnMouseMoved(int x, int y)
 {
-	if(y > Size.Y-11)
-		isMouseInsideAuthor = true;
-	else
-		isMouseInsideAuthor = false;
+	isMouseInsideAuthor = false;
+	isMouseInsideHistory = false;
+	if (MouseInside)
+	{
+		if (y > Size.Y-11)
+			isMouseInsideAuthor = true;
 
-	if(showVotes && y > Size.Y-29 && y < Size.Y - 18 && x > 0 && x < 9)
-		isMouseInsideHistory = true;
-	else
-		isMouseInsideHistory = false;
+		if (y > Size.Y-29 && y < Size.Y - 18 && x > 0 && x < 9)
+			isMouseInsideHistory = true;
+	}
 }
 
 void SaveButton::OnMouseEnter(int x, int y)
@@ -436,6 +410,15 @@ void SaveButton::DoSelection()
 	}
 	if (selectable && actionCallback.selected)
 		actionCallback.selected();
+}
+
+std::unique_ptr<VideoBuffer> SaveButton::CloneThumbnail() const
+{
+	if (thumbnail)
+	{
+		return std::make_unique<VideoBuffer>(*thumbnail);
+	}
+	return nullptr;
 }
 
 } /* namespace ui */

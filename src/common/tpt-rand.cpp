@@ -35,14 +35,14 @@ unsigned int RNG::operator()()
 int RNG::between(int lower, int upper)
 {
 	unsigned int r = next();
-	return static_cast<int>(r % (upper - lower + 1)) + lower;
+	return static_cast<int>(r % ((unsigned int)(upper) - (unsigned int)(lower) + 1U)) + lower;
 }
 
-bool RNG::chance(int nominator, unsigned int denominator)
+bool RNG::chance(int numerator, unsigned int denominator)
 {
-	if (nominator < 0)
+	if (numerator < 0)
 		return false;
-	return next() % denominator < static_cast<unsigned int>(nominator);
+	return next() % denominator < static_cast<unsigned int>(numerator);
 }
 
 float RNG::uniform01()
@@ -62,4 +62,4 @@ void RNG::seed(unsigned int sd)
 	s[1] = sd;
 }
 
-RNG random_gen;
+RNG interfaceRng;

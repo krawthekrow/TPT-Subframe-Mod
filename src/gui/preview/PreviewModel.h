@@ -1,46 +1,55 @@
-#ifndef PREVIEWMODEL_H
-#define PREVIEWMODEL_H
-#include "Config.h"
-
-#include <vector>
+#pragma once
 #include "common/String.h"
+#include "client/Comment.h"
+#include <vector>
+#include <memory>
+#include <optional>
 
 namespace http
 {
-	class Request;
+	class GetSaveDataRequest;
+	class GetSaveRequest;
+	class GetCommentsRequest;
+	class FavouriteSaveRequest;
 }
 
 class PreviewView;
 class SaveInfo;
-class SaveComment;
 class PreviewModel
 {
-	bool doOpen;
-	bool canOpen;
+	bool doOpen = false;
+	bool fromUrl = false;
+	bool canOpen = true;
 	std::vector<PreviewView*> observers;
-	SaveInfo * saveInfo;
-	std::vector<char> * saveData;
-	std::vector<SaveComment*> * saveComments;
+	std::unique_ptr<SaveInfo> saveInfo;
+	std::optional<std::vector<char>> saveData;
+	std::optional<std::vector<Comment>> saveComments;
 	void notifySaveChanged();
 	void notifySaveCommentsChanged();
 	void notifyCommentsPageChanged();
 	void notifyCommentBoxEnabledChanged();
 
-	http::Request * saveDataDownload;
-	http::Request * saveInfoDownload;
-	http::Request * commentsDownload;
+	std::unique_ptr<http::GetSaveDataRequest> saveDataDownload;
+	std::unique_ptr<http::GetSaveRequest> saveInfoDownload;
+	std::unique_ptr<http::GetCommentsRequest> commentsDownload;
+	std::unique_ptr<http::FavouriteSaveRequest> favouriteSaveRequest;
 	int saveID;
 	int saveDate;
 
-	bool commentBoxEnabled;
-	bool commentsLoaded;
-	int commentsTotal;
-	int commentsPageNumber;
+	bool commentBoxEnabled = false;
+	bool commentsLoaded = false;
+	int commentsTotal = 0;
+	int commentsPageNumber = 1;
+
+	std::optional<bool> queuedFavourite;
 
 public:
-	PreviewModel();
-	SaveInfo * GetSaveInfo();
-	std::vector<SaveComment*> * GetComments();
+	const SaveInfo *GetSaveInfo() const;
+	std::unique_ptr<SaveInfo> TakeSaveInfo();
+	const std::vector<Comment> *GetComments() const
+	{
+		return saveComments ? &*saveComments : nullptr;
+	}
 
 	bool GetCommentBoxEnabled();
 	void SetCommentBoxEnabled(bool enabledState);
@@ -55,14 +64,12 @@ public:
 	void UpdateSave(int saveID, int saveDate);
 	void SetFavourite(bool favourite);
 	bool GetDoOpen();
+	bool GetFromUrl();
 	bool GetCanOpen();
 	void SetDoOpen(bool doOpen);
+	void SetFromUrl(bool fromUrl);
 	void Update();
-	void ClearComments();
 	void OnSaveReady();
 	bool ParseSaveInfo(ByteString &saveInfoResponse);
 	bool ParseComments(ByteString &commentsResponse);
-	virtual ~PreviewModel();
 };
-
-#endif /* PREVIEWMODEL_H */

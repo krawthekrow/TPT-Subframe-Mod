@@ -1,19 +1,14 @@
 #include "ConsoleView.h"
-
 #include "ConsoleController.h"
 #include "ConsoleModel.h"
-
-#include <deque>
-
 #include "graphics/Graphics.h"
-
-#include "Config.h"
-
 #include "ConsoleCommand.h"
-
-#include "gui/interface/Keys.h"
 #include "gui/interface/Label.h"
 #include "gui/interface/Textbox.h"
+#include "gui/interface/Engine.h"
+#include "SimulationConfig.h"
+#include <deque>
+#include <SDL.h>
 
 ConsoleView::ConsoleView():
 	ui::Window(ui::Point(0, 0), ui::Point(WINDOWW, 150)),
@@ -30,7 +25,7 @@ ConsoleView::ConsoleView():
 
 void ConsoleView::DoKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt)
 {
-	if ((scan == SDL_SCANCODE_GRAVE && key != '~') || key == SDLK_ESCAPE)
+	if ((ui::Engine::Ref().GraveExitsConsole && scan == SDL_SCANCODE_GRAVE && key != '~') || key == SDLK_ESCAPE || key == SDLK_AC_BACK)
 	{
 		if (!repeat)
 			doClose = true;
@@ -116,9 +111,9 @@ void ConsoleView::NotifyCurrentCommandChanged(ConsoleModel * sender)
 void ConsoleView::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	g->fillrect(Position.X, Position.Y, Size.X, Size.Y, 0, 0, 0, 110);
-	g->draw_line(Position.X, Position.Y+Size.Y-16, Position.X+Size.X, Position.Y+Size.Y-16, 255, 255, 255, 160);
-	g->draw_line(Position.X, Position.Y+Size.Y, Position.X+Size.X, Position.Y+Size.Y, 255, 255, 255, 200);
+	g->BlendFilledRect(RectSized(Position, Size), 0x000000_rgb .WithAlpha(110));
+	g->BlendLine(Position + Vec2{ 0, Size.Y-16 }, Position + Size - Vec2{ 0, 16 }, 0xFFFFFF_rgb .WithAlpha(160));
+	g->BlendLine(Position + Vec2{ 0, Size.Y }, Position + Size, 0xFFFFFF_rgb .WithAlpha(200));
 }
 
 void ConsoleView::OnTick(float dt)

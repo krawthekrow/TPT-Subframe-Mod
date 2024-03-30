@@ -6,13 +6,13 @@ void SimTool::Tool_NGRV()
 {
 	Identifier = "DEFAULT_TOOL_NGRV";
 	Name = "NGRV";
-	Colour = PIXPACK(0xAACCFF);
+	Colour = 0xAACCFF_rgb;
 	Description = "Creates a short-lasting negative gravity well.";
 	Perform = &perform;
 }
 
 static int perform(Simulation * sim, Particle * cpart, int x, int y, int brushX, int brushYy, float strength)
 {
-	sim->gravmap[((y/CELL)*(XRES/CELL))+(x/CELL)] = strength*-5.0f;
+	sim->gravmap[((y/CELL)*XCELLS)+(x/CELL)] = strength*-5.0f;
 	return 1;
 }

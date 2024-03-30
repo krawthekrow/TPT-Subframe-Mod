@@ -1,25 +1,23 @@
-#ifndef ELIPSEBRUSH_H_
-#define ELIPSEBRUSH_H_
-
-#include <cmath>
+#pragma once
 #include "Brush.h"
+#include <cmath>
 
 class EllipseBrush: public Brush
 {
 	bool perfectCircle;
 
 public:
-	EllipseBrush(ui::Point size, bool perfectCircle = true):
-		Brush(size)
+	EllipseBrush(bool newPerfectCircle) :
+		perfectCircle(newPerfectCircle)
 	{
-		this->perfectCircle = perfectCircle;
-		SetRadius(size);
 	}
+	virtual ~EllipseBrush() override = default;
 
-	void GenerateBitmap() override
+	std::unique_ptr<unsigned char []> GenerateBitmap() const override
 	{
-		delete[] bitmap;
-		bitmap = new unsigned char[size.X*size.Y];
+		ui::Point size = radius * 2 + Vec2{ 1, 1 };
+		auto bitmap = std::make_unique<unsigned char []>(size.X * size.Y);
+
 		int rx = radius.X;
 		int ry = radius.Y;
 
@@ -63,7 +61,11 @@ public:
 			bitmap[size.X/2] = 255;
 			bitmap[size.X*size.Y-size.X/2-1] = 255;
 		}
+		return bitmap;
+	}
+
+	std::unique_ptr<Brush> Clone() const override
+	{
+		return std::make_unique<EllipseBrush>(*this);
 	}
 };
-
-#endif /* ELIPSEBRUSH_H_ */

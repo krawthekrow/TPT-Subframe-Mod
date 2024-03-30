@@ -22,9 +22,9 @@ void DebugParts::Draw()
 	for (int i = 0; i < NPART; i++)
 	{
 		if (sim->parts[i].type)
-			g->addpixel(x, y, 255, 255, 255, 180);
+			g->AddPixel({ x, y }, 0xFFFFFF_rgb .WithAlpha(180));
 		else
-			g->addpixel(x, y, 0, 0, 0, 180);
+			g->AddPixel({ x, y }, 0x000000_rgb .WithAlpha(180));
 
 		if (i == sim->parts_lastActiveIndex)
 		{
@@ -38,17 +38,17 @@ void DebugParts::Draw()
 			x = 0;
 		}
 	}
-	g->draw_line(0, lpy, XRES, lpy, 0, 255, 120, 255);
-	g->draw_line(lpx, 0, lpx, YRES, 0, 255, 120, 255);
-	g->addpixel(lpx, lpy, 255, 50, 50, 220);
+	g->DrawLine({ 0, lpy }, { XRES, lpy }, 0x00FF78_rgb);
+	g->DrawLine({ lpx, 0 }, { lpx, YRES }, 0x00FF78_rgb);
+	g->AddPixel({ lpx, lpy }, 0xFF3232_rgb .WithAlpha(220));
 
-	g->addpixel(lpx+1, lpy, 255, 50, 50, 120);
-	g->addpixel(lpx-1, lpy, 255, 50, 50, 120);
-	g->addpixel(lpx, lpy+1, 255, 50, 50, 120);
-	g->addpixel(lpx, lpy-1, 255, 50, 50, 120);
+	g->AddPixel({ lpx+1, lpy }, 0xFF3232_rgb .WithAlpha(120));
+	g->AddPixel({ lpx-1, lpy }, 0xFF3232_rgb .WithAlpha(120));
+	g->AddPixel({ lpx, lpy+1 }, 0xFF3232_rgb .WithAlpha(120));
+	g->AddPixel({ lpx, lpy-1 }, 0xFF3232_rgb .WithAlpha(120));
 
-	g->fillrect(7, YRES-26, g->textwidth(info)+5, 14, 0, 0, 0, 180);
-	g->drawtext(10, YRES-22, info, 255, 255, 255, 255);
+	g->BlendFilledRect(RectSized(Vec2{ 7, YRES-26}, Vec2{ g->TextSize(info).X + 4, 14}), 0x000000_rgb .WithAlpha(180));
+	g->BlendText({ 10, YRES-22 }, info, 0xFFFFFF_rgb .WithAlpha(255));
 }
 
 DebugParts::~DebugParts()

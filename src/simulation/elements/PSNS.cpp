@@ -6,7 +6,7 @@ void Element::Element_PSNS()
 {
 	Identifier = "DEFAULT_PT_PSNS";
 	Name = "PSNS";
-	Colour = PIXPACK(0xDB2020);
+	Colour = 0xDB2020_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SENSOR;
 	Enabled = 1;
@@ -48,20 +48,24 @@ void Element::Element_PSNS()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rt;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	if ((parts[i].tmp == 0 && sim->pv[y/CELL][x/CELL] > parts[i].temp-273.15f) || (parts[i].tmp == 2 && sim->pv[y/CELL][x/CELL] < parts[i].temp-273.15f))
 	{
-		for (rx = -2; rx <= 2; rx++)
-			for (ry = -2; ry <= 2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+		for (auto rx = -2; rx <= 2; rx++)
+		{
+			for (auto ry = -2; ry <= 2; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if (!r)
 						continue;
-					if (sim->parts_avg(i,ID(r),PT_INSL) != PT_INSL)
+					auto pavg = sim->parts_avg(i,ID(r),PT_INSL);
+					if (pavg != PT_INSL && pavg != PT_RSSS)
 					{
-						rt = TYP(r);
-						if ((sim->elements[rt].Properties&PROP_CONDUCTS) && !(rt==PT_WATR||rt==PT_SLTW||rt==PT_NTCT||rt==PT_PTCT||rt==PT_INWR) && parts[ID(r)].life==0)
+						auto rt = TYP(r);
+						if ((elements[rt].Properties&PROP_CONDUCTS) && !(rt==PT_WATR||rt==PT_SLTW||rt==PT_NTCT||rt==PT_PTCT||rt==PT_INWR) && parts[ID(r)].life==0)
 						{
 							sim->debug_interestingChangeOccurred = true;
 							parts[ID(r)].life = 4;
@@ -70,6 +74,8 @@ static int update(UPDATE_FUNC_ARGS)
 						}
 					}
 				}
+			}
+		}
 	}
 	if (parts[i].tmp == 1)
 	{
@@ -77,16 +83,17 @@ static int update(UPDATE_FUNC_ARGS)
 		float photonWl = sim->pv[y / CELL][x / CELL];
 		if (setFilt)
 		{
-			int nx, ny;
-			for (rx = -1; rx <= 1; rx++)
-				for (ry = -1; ry <= 1; ry++)
-					if (BOUNDS_CHECK && (rx || ry))
+			for (auto rx = -1; rx <= 1; rx++)
+			{
+				for (auto ry = -1; ry <= 1; ry++)
+				{
+					if (rx || ry)
 					{
-						r = pmap[y + ry][x + rx];
+						auto r = pmap[y + ry][x + rx];
 						if (!r)
 							continue;
-						nx = x + rx;
-						ny = y + ry;
+						auto nx = x + rx;
+						auto ny = y + ry;
 						while (TYP(r) == PT_FILT)
 						{
 							sim->debug_interestingChangeOccurred = true;
@@ -98,6 +105,8 @@ static int update(UPDATE_FUNC_ARGS)
 							r = pmap[ny][nx];
 						}
 					}
+				}
+			}
 		}
 	}
 	return 0;

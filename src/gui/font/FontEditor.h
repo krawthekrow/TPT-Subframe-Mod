@@ -1,6 +1,4 @@
-#ifndef FONTEDITOR_H
-#define FONTEDITOR_H
-
+#pragma once
 #include <vector>
 #include <array>
 #include <map>
@@ -15,9 +13,11 @@ namespace ui
 	class Button;
 }
 
-#define MAX_WIDTH 64
+constexpr int MAX_WIDTH = 64;
 class FontEditor: public ui::Window
 {
+	void HandleExit();
+
 private:
 	ByteString dataFile;
 	std::map<String::value_type, unsigned char> fontWidths;
@@ -77,5 +77,3 @@ public:
 	void OnMouseDown(int x, int y, unsigned button) override;
 	void OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt) override;
 };
-
-#endif

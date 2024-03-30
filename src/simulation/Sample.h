@@ -1,6 +1,4 @@
-#ifndef The_Powder_Toy_Sample_h
-#define The_Powder_Toy_Sample_h
-
+#pragma once
 #include "Particle.h"
 
 class SimulationSample
@@ -44,5 +42,3 @@ public:
 		return SParticleIDs[EffectiveStackEditDepth - StackIndexBegin];
 	}
 };
-
-#endif

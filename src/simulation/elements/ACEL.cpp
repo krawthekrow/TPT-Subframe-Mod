@@ -7,7 +7,7 @@ void Element::Element_ACEL()
 {
 	Identifier = "DEFAULT_PT_ACEL";
 	Name = "ACEL";
-	Colour = PIXPACK(0x0099CC);
+	Colour = 0x0099CC_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_FORCE;
 	Enabled = 1;
@@ -49,7 +49,8 @@ void Element::Element_ACEL()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	float multiplier;
 	if (parts[i].life!=0)
 	{
@@ -61,22 +62,26 @@ static int update(UPDATE_FUNC_ARGS)
 		multiplier = 1.1f;
 	}
 	parts[i].tmp = 0;
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (!rx != !ry))
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (!rx != !ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if(!r)
 					r = sim->photons[y+ry][x+rx];
 				if (!r)
 					continue;
-				if(sim->elements[TYP(r)].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY))
+				if(elements[TYP(r)].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY))
 				{
 					parts[ID(r)].vx *= multiplier;
 					parts[ID(r)].vy *= multiplier;
 					parts[i].tmp = 1;
 				}
 			}
+		}
+	}
 	return 0;
 }
 

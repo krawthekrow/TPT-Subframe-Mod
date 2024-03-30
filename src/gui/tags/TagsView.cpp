@@ -13,7 +13,8 @@
 #include "gui/interface/Button.h"
 #include "gui/interface/Textbox.h"
 #include "gui/interface/Label.h"
-#include "gui/interface/Keys.h"
+
+#include <SDL.h>
 
 TagsView::TagsView():
 	ui::Window(ui::Point(-1, -1), ui::Point(195, 250))
@@ -29,7 +30,9 @@ TagsView::TagsView():
 	tagInput->Appearance.icon = IconTag;
 	tagInput->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	tagInput->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	tagInput->SetLimit(16);
 	AddComponent(tagInput);
+	FocusComponent(tagInput);
 
 	addButton = new ui::Button(ui::Point(tagInput->Position.X+tagInput->Size.X+4, tagInput->Position.Y), ui::Point(40, 16), "Add");
 	addButton->Appearance.icon = IconAdd;
@@ -48,11 +51,16 @@ TagsView::TagsView():
 	AddComponent(title);
 }
 
+void TagsView::OnTick(float dt)
+{
+	c->Tick();
+}
+
 void TagsView::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
+	g->DrawFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb);
+	g->DrawRect(RectSized(Position, Size), 0xFFFFFF_rgb);
 }
 
 void TagsView::NotifyTagsChanged(TagsModel * sender)
@@ -75,7 +83,7 @@ void TagsView::NotifyTagsChanged(TagsModel * sender)
 			tags.push_back(tempLabel);
 			AddComponent(tempLabel);
 
-			if(sender->GetSave()->GetUserName() == Client::Ref().GetAuthUser().Username || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationModerator)
+			if(sender->GetSave()->GetUserName() == Client::Ref().GetAuthUser().Username || Client::Ref().GetAuthUser().UserElevation == User::ElevationAdmin || Client::Ref().GetAuthUser().UserElevation == User::ElevationMod)
 			{
 				ui::Button * tempButton = new ui::Button(ui::Point(15, 37+(16*i)), ui::Point(11, 12));
 				tempButton->Appearance.icon = IconDelete;
@@ -84,14 +92,7 @@ void TagsView::NotifyTagsChanged(TagsModel * sender)
 				tempButton->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
 				tempButton->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 				tempButton->SetActionCallback({ [this, tag] {
-					try
-					{
-						c->RemoveTag(tag);
-					}
-					catch(TagsModelException & ex)
-					{
-						new ErrorMessage("Could not remove tag", ByteString(ex.what()).FromUtf8());
-					}
+					c->RemoveTag(tag);
 				} });
 				tags.push_back(tempButton);
 				AddComponent(tempButton);
@@ -124,13 +125,6 @@ void TagsView::addTag()
 		new ErrorMessage("Tag not long enough", "Must be at least 4 letters");
 		return;
 	}
-	try
-	{
-		c->AddTag(tagInput->GetText().ToUtf8());
-	}
-	catch(TagsModelException & ex)
-	{
-		new ErrorMessage("Could not add tag", ByteString(ex.what()).FromUtf8());
-	}
+	c->AddTag(tagInput->GetText().ToUtf8());
 	tagInput->SetText("");
 }

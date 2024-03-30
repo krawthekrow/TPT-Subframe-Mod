@@ -1,14 +1,4 @@
-#ifndef SIMULATION_H
-#define SIMULATION_H
-#include "Config.h"
-
-#include <cstring>
-#include <cstddef>
-#include <vector>
-#include <map>
-#include <array>
-#include <memory>
-
+#pragma once
 #include "Particle.h"
 #include "Stickman.h"
 #include "WallType.h"
@@ -17,14 +7,23 @@
 #include "BuiltinGOL.h"
 #include "MenuSection.h"
 #include "CoordStack.h"
+#include "gravity/GravityPtr.h"
+#include "common/tpt-rand.h"
 #include "Sample.h"
 
 #include "Element.h"
+#include "SimulationConfig.h"
+#include <cstring>
+#include <cstddef>
+#include <vector>
+#include <map>
+#include <array>
+#include <memory>
+#include <optional>
 
-#define CHANNELS ((int)(MAX_TEMP-73)/100+2)
+constexpr int CHANNELS = int(MAX_TEMP - 73) / 100 + 2;
 
 class Snapshot;
-class SimTool;
 class Brush;
 struct matrix2d;
 struct vector2d;
@@ -38,17 +37,12 @@ class GameSave;
 class Simulation
 {
 public:
-
-	Gravity * grav;
-	Air * air;
+	GravityPtr grav;
+	std::unique_ptr<Air> air;
+	RNG rng;
 
 	std::vector<sign> signs;
-	std::array<Element, PT_NUM> elements;
 	//Element * elements;
-	std::vector<SimTool> tools;
-	std::vector<unsigned int> platent;
-	std::vector<wall_type> wtypes;
-	std::vector<menu_section> msections;
 
 	int currentTick;
 	int replaceModeSelected;
@@ -69,8 +63,7 @@ public:
 	int stackToolNotifShownX;
 	int stackToolNotifShownY;
 
-	char can_move[PT_NUM][PT_NUM];
-	int debug_currentParticle;
+	int debug_nextToUpdate;
 	int debug_mostRecentlyUpdated = -1; // -1 when between full update loops
 	bool debug_interestingChangeOccurred;
 	bool needReloadParticleOrder;
@@ -102,20 +95,20 @@ public:
 	int GSPEED;
 	unsigned int gol[YRES][XRES][5];
 	//Air sim
-	float (*vx)[XRES/CELL];
-	float (*vy)[XRES/CELL];
-	float (*pv)[XRES/CELL];
-	float (*hv)[XRES/CELL];
+	float (*vx)[XCELLS];
+	float (*vy)[XCELLS];
+	float (*pv)[XCELLS];
+	float (*hv)[XCELLS];
 	//Gravity sim
-	float *gravx;//gravx[(YRES/CELL) * (XRES/CELL)];
-	float *gravy;//gravy[(YRES/CELL) * (XRES/CELL)];
-	float *gravp;//gravp[(YRES/CELL) * (XRES/CELL)];
-	float *gravmap;//gravmap[(YRES/CELL) * (XRES/CELL)];
+	float *gravx;//gravx[YCELLS * XCELLS];
+	float *gravy;//gravy[YCELLS * XCELLS];
+	float *gravp;//gravp[YCELLS * XCELLS];
+	float *gravmap;//gravmap[YCELLS * XCELLS];
 	//Walls
-	unsigned char bmap[YRES/CELL][XRES/CELL];
-	unsigned char emap[YRES/CELL][XRES/CELL];
-	float fvx[YRES/CELL][XRES/CELL];
-	float fvy[YRES/CELL][XRES/CELL];
+	unsigned char bmap[YCELLS][XCELLS];
+	unsigned char emap[YCELLS][XCELLS];
+	float fvx[YCELLS][XCELLS];
+	float fvy[YCELLS][XCELLS];
 	//Particles
 	Particle parts[NPART];
 	int pmap[YRES][XRES];
@@ -135,42 +128,45 @@ public:
 	int subframe_framerender;
 	int pretty_powder;
 	int sandcolour;
+	int sandcolour_interface;
 	int sandcolour_frame;
 	int deco_space;
+	uint64_t frameCount;
+	bool ensureDeterminism;
 
-	int Load(const GameSave * save, bool includePressure);
-	int Load(const GameSave * save, bool includePressure, int x, int y);
-	GameSave * Save(bool includePressure);
-	GameSave * Save(bool includePressure, int x1, int y1, int x2, int y2);
-	void SaveSimOptions(GameSave * gameSave);
+	void Load(const GameSave *save, bool includePressure, Vec2<int> blockP); // block coordinates
+	std::unique_ptr<GameSave> Save(bool includePressure, Rect<int> partR); // particle coordinates
+	void SaveSimOptions(GameSave &gameSave);
 	void UpdateSample(int x, int y);
 	int GetStackEditPartId(); // returns -1 if no particles exist in sample
 
-	std::unique_ptr<Snapshot> CreateSnapshot();
+	std::unique_ptr<Snapshot> CreateSnapshot() const;
 	void Restore(const Snapshot &snap);
 
-	int is_blocking(int t, int x, int y);
-	int is_boundary(int pt, int x, int y);
-	int find_next_boundary(int pt, int *x, int *y, int dm, int *em, bool reverse);
+	int is_blocking(int t, int x, int y) const;
+	int is_boundary(int pt, int x, int y) const;
+	int find_next_boundary(int pt, int *x, int *y, int dm, int *em, bool reverse) const;
 	void photoelectric_effect(int nx, int ny);
-	unsigned direction_to_map(float dx, float dy, int t);
 	int do_move(int i, int x, int y, float nxf, float nyf);
 	bool move(int i, int x, int y, float nxf, float nyf);
 	int try_move(int i, int x, int y, int nx, int ny);
-	int eval_move(int pt, int nx, int ny, unsigned *rr);
-	void init_can_move();
-	bool IsWallBlocking(int x, int y, int type);
-	bool IsElement(int type) const {
-		return (type > 0 && type < PT_NUM && elements[type].Enabled);
-	}
-	bool IsElementOrNone(int type) const {
-		return (type >= 0 && type < PT_NUM && elements[type].Enabled);
-	}
+	int eval_move(int pt, int nx, int ny, unsigned *rr) const;
+
+	struct PlanMoveResult
+	{
+		int fin_x, fin_y, clear_x, clear_y;
+		float fin_xf, fin_yf, clear_xf, clear_yf;
+		float vx, vy;
+	};
+	template<bool UpdateEmap, class Sim>
+	static PlanMoveResult PlanMove(Sim &sim, int i, int x, int y);
+
+	bool IsWallBlocking(int x, int y, int type) const;
 	void create_cherenkov_photon(int pp);
 	void create_gain_photon(int pp);
 	void kill_part(int i);
-	bool FloodFillPmapCheck(int x, int y, int type);
-	int flood_prop(int x, int y, size_t propoffset, PropertyValue propvalue, StructProperty::PropertyType proptype);
+	bool FloodFillPmapCheck(int x, int y, int type) const;
+	int flood_prop(int x, int y, StructProperty prop, PropertyValue propvalue);
 	bool flood_water(int x, int y, int i);
 	int FloodINST(int x, int y);
 	void detach(int i);
@@ -184,10 +180,10 @@ public:
 	int is_wire_off(int x, int y);
 	void set_emap(int x, int y);
 	int parts_avg(int ci, int ni, int t);
-	void create_arc(int sx, int sy, int dx, int dy, int midpoints, int variance, int type, int flags);
 	bool AreParticlesInSubframeOrder();
 	void CompleteDebugUpdateParticles();
-	void UpdateParticles(int start, int end); // range inclusive on both ends
+	void UpdateUpTo(int upTo);
+	void UpdateParticles(int start, int end); // Dispatches an update to the range [start, end).
 	void SimulateGoL();
 	void RecalcFreeParticles(bool do_life_dec);
 	void FixSoapLinks(std::map<unsigned int, unsigned int> &soapList);
@@ -201,7 +197,6 @@ public:
 	void CheckStacking();
 	void BeforeSim();
 	void AfterSim();
-	void rotate_area(int area_x, int area_y, int area_w, int area_h, int invert);
 	void clear_area(int area_x, int area_y, int area_w, int area_h);
 
 	void SetEdgeMode(int newEdgeMode);
@@ -209,78 +204,51 @@ public:
 
 	//Drawing Deco
 	void ApplyDecoration(int x, int y, int colR, int colG, int colB, int colA, int mode);
-	void ApplyDecorationPoint(int x, int y, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
-	void ApplyDecorationLine(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
+	void ApplyDecorationPoint(int x, int y, int colR, int colG, int colB, int colA, int mode, Brush const &cBrush);
+	void ApplyDecorationLine(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode, Brush const &cBrush);
 	void ApplyDecorationBox(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode);
 	bool ColorCompare(Renderer *ren, int x, int y, int replaceR, int replaceG, int replaceB);
 	void ApplyDecorationFill(Renderer *ren, int x, int y, int colR, int colG, int colB, int colA, int replaceR, int replaceG, int replaceB);
 
 	//Drawing Tools like HEAT, AIR, and GRAV
 	int Tool(int x, int y, int tool, int brushX, int brushY, float strength = 1.0f);
-	int ToolBrush(int x, int y, int tool, Brush * cBrush, float strength = 1.0f);
-	void ToolLine(int x1, int y1, int x2, int y2, int tool, Brush * cBrush, float strength = 1.0f);
+	int ToolBrush(int x, int y, int tool, Brush const &cBrush, float strength = 1.0f);
+	void ToolLine(int x1, int y1, int x2, int y2, int tool, Brush const &cBrush, float strength = 1.0f);
 	void ToolBox(int x1, int y1, int x2, int y2, int tool, float strength = 1.0f);
 
 	//Drawing Walls
-	int CreateWalls(int x, int y, int rx, int ry, int wall, Brush * cBrush = NULL);
-	void CreateWallLine(int x1, int y1, int x2, int y2, int rx, int ry, int wall, Brush * cBrush = NULL);
+	int CreateWalls(int x, int y, int rx, int ry, int wall, Brush const *cBrush = nullptr);
+	void CreateWallLine(int x1, int y1, int x2, int y2, int rx, int ry, int wall, Brush const *cBrush = nullptr);
 	void CreateWallBox(int x1, int y1, int x2, int y2, int wall);
 	int FloodWalls(int x, int y, int wall, int bm);
 
 	//Drawing Particles
-	int CreateParts(int positionX, int positionY, int c, Brush * cBrush, int flags = -1);
+	int CreateParts(int positionX, int positionY, int c, Brush const &cBrush, int flags = -1);
 	int CreateParts(int x, int y, int rx, int ry, int c, int flags = -1);
 	int CreatePartFlags(int x, int y, int c, int flags);
-	void CreateLine(int x1, int y1, int x2, int y2, int c, Brush * cBrush, int flags = -1);
+	void CreateLine(int x1, int y1, int x2, int y2, int c, Brush const &cBrush, int flags = -1);
 	void CreateLine(int x1, int y1, int x2, int y2, int c);
 	void CreateBox(int x1, int y1, int x2, int y2, int c, int flags = -1);
 	int FloodParts(int x, int y, int c, int cm, int flags = -1);
 
-
 	void GetGravityField(int x, int y, float particleGrav, float newtonGrav, float & pGravX, float & pGravY);
 
-	int GetParticleType(ByteString type);
-
-	void orbitalparts_get(int block1, int block2, int resblock1[], int resblock2[]);
-	void orbitalparts_set(int *block1, int *block2, int resblock1[], int resblock2[]);
 	int get_wavelength_bin(int *wm);
-	int get_normal(int pt, int x, int y, float dx, float dy, float *nx, float *ny);
-	int get_normal_interp(int pt, float x0, float y0, float dx, float dy, float *nx, float *ny);
+	struct GetNormalResult
+	{
+		bool success;
+		float nx, ny;
+		int lx, ly, rx, ry;
+	};
+	GetNormalResult get_normal(int pt, int x, int y, float dx, float dy) const;
+	template<bool PhotoelectricEffect, class Sim>
+	static GetNormalResult get_normal_interp(Sim &sim, int pt, float x0, float y0, float dx, float dy);
 	void clear_sim();
 	Simulation();
 	~Simulation();
 
-	bool InBounds(int x, int y);
-
-	// These don't really belong anywhere at the moment, so go here for loop edge mode
-	static int remainder_p(int x, int y);
-	static float remainder_p(float x, float y);
-
-	String ElementResolve(int type, int ctype) const;
-	String BasicParticleInfo(Particle const &sample_part) const;
-
-
-	struct CustomGOLData
-	{
-		int rule, colour1, colour2;
-		String nameString, ruleString;
-
-		inline bool operator <(const CustomGOLData &other) const
-		{
-			return rule < other.rule;
-		}
-	};
-
-private:
-	std::vector<CustomGOLData> customGol;
-
-public:
-	const CustomGOLData *GetCustomGOLByRule(int rule) const;
-	const std::vector<CustomGOLData> GetCustomGol() { return customGol; }
-	void SetCustomGOL(std::vector<CustomGOLData> newCustomGol);
+	bool useLuaCallbacks = false;
 
 private:
 	CoordStack& getCoordStackSingleton();
 };
-
-#endif /* SIMULATION_H */

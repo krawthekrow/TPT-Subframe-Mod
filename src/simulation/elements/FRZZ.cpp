@@ -6,7 +6,7 @@ void Element::Element_FRZZ()
 {
 	Identifier = "DEFAULT_PT_FRZZ";
 	Name = "FRZZ";
-	Colour = PIXPACK(0xC0E0FF);
+	Colour = 0xC0E0FF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_POWDERS;
 	Enabled = 1;
@@ -48,15 +48,16 @@ void Element::Element_FRZZ()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry;
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				if (TYP(r)==PT_WATR && RNG::Ref().chance(1, 20))
+				if (TYP(r)==PT_WATR && sim->rng.chance(1, 20))
 				{
 					sim->part_change_type(ID(r),x+rx,y+ry,PT_FRZW);
 					parts[ID(r)].life = 100;
@@ -64,5 +65,7 @@ static int update(UPDATE_FUNC_ARGS)
 					return 1;
 				}
 			}
+		}
+	}
 	return 0;
 }

@@ -1,9 +1,7 @@
-#ifndef IMAGEREQUEST2_H
-#define IMAGEREQUEST2_H
-
-#include "Request.h"
+#pragma once
 #include "common/String.h"
-
+#include "common/Vec2.h"
+#include "Request.h"
 #include <memory>
 
 class VideoBuffer;
@@ -12,15 +10,11 @@ namespace http
 {
 	class ImageRequest : public Request
 	{
-		int Width, Height;
-		
+		Vec2<int> requestedSize;
+
 	public:
-		ImageRequest(ByteString url, int width, int height);
-		virtual ~ImageRequest();
+		ImageRequest(ByteString url, Vec2<int> newRequestedSize);
 
 		std::unique_ptr<VideoBuffer> Finish();
 	};
 }
-
-#endif // IMAGEREQUEST2_H
-

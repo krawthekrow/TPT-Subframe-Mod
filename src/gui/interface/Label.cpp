@@ -1,14 +1,11 @@
 #include "Label.h"
-
 #include "Format.h"
 #include "Point.h"
-#include "Keys.h"
-#include "Mouse.h"
-#include "PowderToy.h"
+#include "PowderToySDL.h"
 #include "ContextMenu.h"
-
 #include "graphics/Graphics.h"
 #include "graphics/FontReader.h"
+#include <SDL.h>
 
 using namespace ui;
 
@@ -21,7 +18,10 @@ Label::Label(Point position, Point size, String labelText):
 	selecting(false),
 	autoHeight(size.Y==-1?true:false)
 {
-	SetText(labelText);
+	if (labelText.size()) // Don't call virtual function in ctor unless absolutely necessary. Deriveds set labelText to "".
+	{
+		SetText(labelText);
+	}
 
 	menu = new ContextMenu(this);
 	menu->AddItem(ContextMenuItem("Copy", 0, true));
@@ -88,23 +88,27 @@ void Label::OnContextMenuAction(int item)
 	}
 }
 
-void Label::OnMouseClick(int x, int y, unsigned button)
+void Label::OnMouseDown(int x, int y, unsigned button)
 {
-	if(button == SDL_BUTTON_RIGHT)
+	if (MouseDownInside)
 	{
-		if (menu)
+		if(button == SDL_BUTTON_RIGHT)
 		{
-			menu->Show(GetScreenPos() + ui::Point(x, y));
+			if (menu)
+			{
+				menu->Show(GetContainerPos() + ui::Point(x, y));
+			}
 		}
-	}
-	else
-	{
-		selecting = true;
-		selectionIndex0 = textWrapper.Point2Index(x - textPosition.X, y - textPosition.Y);
-		selectionIndexL = selectionIndex0;
-		selectionIndexH = selectionIndex0;
+		else
+		{
+			selecting = true;
+			auto tp = textPosition - Vec2{ scrollX, 0 };
+			selectionIndex0 = textWrapper.Point2Index(x - Position.X - tp.X, y - Position.Y - tp.Y);
+			selectionIndexL = selectionIndex0;
+			selectionIndexH = selectionIndex0;
 
-		updateSelection();
+			updateSelection();
+		}
 	}
 }
 
@@ -142,11 +146,12 @@ void Label::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bo
 	}
 }
 
-void Label::OnMouseMoved(int localx, int localy, int dx, int dy)
+void Label::OnMouseMoved(int localx, int localy)
 {
 	if (selecting)
 	{
-		selectionIndex1 = textWrapper.Point2Index(localx - textPosition.X, localy - textPosition.Y);
+		auto tp = textPosition - Vec2{ scrollX, 0 };
+		selectionIndex1 = textWrapper.Point2Index(localx - tp.X, localy - tp.Y);
 		if (selectionIndex1.raw_index < selectionIndex0.raw_index)
 		{
 			selectionIndexL = selectionIndex1;
@@ -163,6 +168,10 @@ void Label::OnMouseMoved(int localx, int localy, int dx, int dy)
 
 void Label::Tick(float dt)
 {
+	if (multiline)
+	{
+		scrollX = 0;
+	}
 	if (!this->IsFocused() && (HasSelection() || selecting))
 	{
 		ClearSelection();
@@ -247,52 +256,54 @@ void Label::Draw(const Point& screenPos)
 	int selectionYH;
 	int selectionLineH = displayTextWrapper.Index2Point(indexH, selectionXH, selectionYH);
 
+	auto clip = RectSized(screenPos + Vec2{ 1, 1 }, Size - Vec2{ 2, 2 }) & g->GetClipRect();
+	g->SwapClipRect(clip);
+	auto tp = textPosition - Vec2{ scrollX, 0 };
 	if (HasSelection())
 	{
 		if (selectionLineH == selectionLineL)
 		{
-			g->fillrect(
-				screenPos.X + textPosition.X + selectionXL - 1,
-				screenPos.Y + textPosition.Y + selectionYL - 2,
-				selectionXH - selectionXL + 1,
-				FONT_H,
-				255, 255, 255, 255
+			g->DrawFilledRect(
+				RectSized(
+					screenPos + tp + Vec2{ selectionXL - 1, selectionYL - 2 },
+					Vec2{ selectionXH - selectionXL + 1, FONT_H }
+				),
+				0xFFFFFF_rgb
 			);
 		}
 		else
 		{
-			g->fillrect(
-				screenPos.X + textPosition.X + selectionXL - 1,
-				screenPos.Y + textPosition.Y + selectionYL - 2,
-				textSize.X - selectionXL + 1,
-				FONT_H,
-				255, 255, 255, 255
+			g->DrawFilledRect(
+				RectSized(
+					screenPos + tp + Vec2{ selectionXL - 1, selectionYL - 2 },
+					Vec2{ textSize.X - selectionXL + 1, FONT_H }
+				),
+				0xFFFFFF_rgb
 			);
 			for (int i = 1; i < selectionLineH - selectionLineL; ++i)
 			{
-				g->fillrect(
-					screenPos.X + textPosition.X - 1,
-					screenPos.Y + textPosition.Y + selectionYL - 2 + i * FONT_H,
-					textSize.X + 1,
-					FONT_H,
-					255, 255, 255, 255
+				g->DrawFilledRect(
+					RectSized(
+						screenPos + tp + Vec2{ -1, selectionYL - 2 + i * FONT_H },
+						Vec2{ textSize.X + 1, FONT_H }
+					),
+					0xFFFFFF_rgb
 				);
 			}
-			g->fillrect(
-				screenPos.X + textPosition.X - 1,
-				screenPos.Y + textPosition.Y + selectionYH - 2,
-				selectionXH + 1,
-				FONT_H,
-				255, 255, 255, 255
+			g->DrawFilledRect(
+				RectSized(
+					screenPos + tp + Vec2{ -1, selectionYH - 2 },
+					Vec2{ selectionXH + 1, FONT_H }
+				),
+				0xFFFFFF_rgb
 			);
 		}
 	}
-
-	g->drawtext(
-		screenPos.X + textPosition.X,
-		screenPos.Y + textPosition.Y,
+	g->BlendText(
+		screenPos + tp,
 		displayTextWithSelection,
-		textColour.Red, textColour.Green, textColour.Blue, 255
+		textColour.NoAlpha().WithAlpha(255)
 	);
+	g->SwapClipRect(clip);
 }
 

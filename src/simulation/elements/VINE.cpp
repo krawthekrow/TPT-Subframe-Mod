@@ -1,5 +1,5 @@
-#include "common/tpt-minmax.h"
 #include "simulation/ElementCommon.h"
+#include <algorithm>
 
 static int update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
@@ -8,7 +8,7 @@ void Element::Element_VINE()
 {
 	Identifier = "DEFAULT_PT_VINE";
 	Name = "VINE";
-	Colour = PIXPACK(0x079A00);
+	Colour = 0x079A00_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -52,19 +52,19 @@ void Element::Element_VINE()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, np, rx, ry, rndstore = RNG::Ref().gen();
-	rx = (rndstore % 3) - 1;
+	int rndstore = sim->rng.gen();
+	auto rx = (rndstore % 3) - 1;
 	rndstore >>= 2;
-	ry = (rndstore % 3) - 1;
+	auto ry = (rndstore % 3) - 1;
 	rndstore >>= 2;
-	if (BOUNDS_CHECK && (rx || ry))
+	if (rx || ry)
 	{
-		r = pmap[y+ry][x+rx];
+		auto r = pmap[y+ry][x+rx];
 		if (!(rndstore % 15))
 			sim->part_change_type(i, x, y, PT_PLNT);
 		else if (!r)
 		{
-			np = sim->create_part(-1,x+rx,y+ry,PT_VINE);
+			auto np = sim->create_part(-1,x+rx,y+ry,PT_VINE);
 			if (np<0) return 0;
 			parts[np].temp = parts[i].temp;
 			sim->part_change_type(i,x,y,PT_PLNT);

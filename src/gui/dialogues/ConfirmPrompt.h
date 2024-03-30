@@ -1,6 +1,4 @@
-#ifndef CONFIRMPROMPT_H_
-#define CONFIRMPROMPT_H_
-
+#pragma once
 #include "gui/interface/Window.h"
 
 #include <functional>
@@ -18,8 +16,5 @@ public:
 	ConfirmPrompt(String title, String message, ResultCallback callback_ = {}, String buttonText = String("Confirm"));
 	virtual ~ConfirmPrompt() = default;
 
-	static bool Blocking(String title, String message, String buttonText = String("Confirm"));
 	void OnDraw() override;
 };
-
-#endif /* CONFIRMPROMPT_H_ */

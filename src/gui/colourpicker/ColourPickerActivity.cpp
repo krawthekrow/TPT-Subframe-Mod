@@ -4,12 +4,13 @@
 #include "gui/interface/Slider.h"
 #include "gui/interface/Button.h"
 #include "gui/interface/Label.h"
-#include "gui/interface/Keys.h"
 #include "gui/Style.h"
 
 #include "graphics/Graphics.h"
 
 #include "Misc.h"
+
+#include <SDL.h>
 
 ColourPickerActivity::ColourPickerActivity(ui::Colour initialColour, OnPicked onPicked_) :
 	WindowActivity(ui::Point(-1, -1), ui::Point(266, 215)),
@@ -254,15 +255,13 @@ void ColourPickerActivity::OnKeyPress(int key, int scan, bool repeat, bool shift
 void ColourPickerActivity::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	//g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->fillrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3, 0, 0, 0, currentAlpha);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
+	g->BlendFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb .WithAlpha(currentAlpha));
+	g->DrawRect(RectSized(Position, Size), 0xFFFFFF_rgb);
 
-	g->drawrect(Position.X+4, Position.Y+4, 258, 130, 180, 180, 180, 255);
+	g->DrawRect(RectSized(Position + Vec2{ 4, 4 }, Vec2{ 258, 130 }), 0xB4B4B4_rgb);
 
 
-	int offsetX = Position.X+5;
-	int offsetY = Position.Y+5;
+	auto offset = Position + Vec2{ 5, 5 };
 
 
 	//draw color square
@@ -271,7 +270,7 @@ void ColourPickerActivity::OnDraw()
 	{
 		for(int hue = 0; hue <= 359; hue++)
 		{
-			currx = clamp_flt(float(hue), 0, 359)+offsetX;
+			currx = clamp_flt(float(hue), 0, 359)+offset.X;
 			if (currx == lastx)
 				continue;
 			lastx = currx;
@@ -279,7 +278,7 @@ void ColourPickerActivity::OnDraw()
 			int cg = 0;
 			int cb = 0;
 			HSV_to_RGB(hue, 255-saturation, currentValue, &cr, &cg, &cb);
-			g->blendpixel(currx, (saturation/2)+offsetY, cr, cg, cb, currentAlpha);
+			g->BlendPixel({ currx, (saturation/2)+offset.Y }, RGBA<uint8_t>(cr, cg, cb, currentAlpha));
 		}
 	}
 
@@ -292,10 +291,9 @@ void ColourPickerActivity::OnDraw()
 		HSV_to_RGB(hue, currentSaturation, currentValue, &red, &green, &blue);
 		for (int ry = 0; ry < (hSlider->Size.Y / 2) - 1; ry++)
 		{
-			g->blendpixel(
-				rx + offsetX + hSlider->Position.X,
-				ry + offsetY + hSlider->Position.Y,
-				red, green, blue, currentAlpha
+			g->BlendPixel(
+				offset + hSlider->Position + Vec2{ rx, ry },
+				RGBA<uint8_t>(red, green, blue, currentAlpha)
 			);
 		}
 	}
@@ -303,9 +301,9 @@ void ColourPickerActivity::OnDraw()
 	//draw color square pointer
 	int currentHueX = clamp_flt(float(currentHue), 0, 359);
 	int currentSaturationY = ((255-currentSaturation)/2);
-	g->xor_line(offsetX+currentHueX, offsetY+currentSaturationY-5, offsetX+currentHueX, offsetY+currentSaturationY-1);
-	g->xor_line(offsetX+currentHueX, offsetY+currentSaturationY+1, offsetX+currentHueX, offsetY+currentSaturationY+5);
-	g->xor_line(offsetX+currentHueX-5, offsetY+currentSaturationY, offsetX+currentHueX-1, offsetY+currentSaturationY);
-	g->xor_line(offsetX+currentHueX+1, offsetY+currentSaturationY, offsetX+currentHueX+5, offsetY+currentSaturationY);
+	g->XorLine(offset + Vec2{ currentHueX, currentSaturationY-5 }, offset + Vec2{ currentHueX, currentSaturationY-1 });
+	g->XorLine(offset + Vec2{ currentHueX, currentSaturationY+1 }, offset + Vec2{ currentHueX, currentSaturationY+5 });
+	g->XorLine(offset + Vec2{ currentHueX-5, currentSaturationY }, offset + Vec2{ currentHueX-1, currentSaturationY });
+	g->XorLine(offset + Vec2{ currentHueX+1, currentSaturationY }, offset + Vec2{ currentHueX+5, currentSaturationY });
 
 }

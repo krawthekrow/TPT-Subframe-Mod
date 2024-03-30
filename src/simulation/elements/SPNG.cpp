@@ -7,7 +7,7 @@ void Element::Element_SPNG()
 {
 	Identifier = "DEFAULT_PT_SPNG";
 	Name = "SPNG";
-	Colour = PIXPACK(0xFFBE30);
+	Colour = 0xFFBE30_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -49,46 +49,47 @@ void Element::Element_SPNG()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, trade, rx, ry, tmp, np;
 	int limit = 50;
 	if (parts[i].life<limit && sim->pv[y/CELL][x/CELL]<=3&&sim->pv[y/CELL][x/CELL]>=-3&&parts[i].temp<=374.0f)
 	{
 		int absorbChanceDenom = parts[i].life*10000/limit + 500;
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
-					switch TYP(r)
+					auto r = pmap[y+ry][x+rx];
+					switch (TYP(r))
 					{
 					case PT_WATR:
 					case PT_DSTW:
 					case PT_FRZW:
-						if (parts[i].life<limit && RNG::Ref().chance(500, absorbChanceDenom))
+						if (parts[i].life<limit && sim->rng.chance(500, absorbChanceDenom))
 						{
 							parts[i].life++;
 							sim->kill_part(ID(r));
 						}
 						break;
 					case PT_SLTW:
-						if (parts[i].life<limit && RNG::Ref().chance(50, absorbChanceDenom))
+						if (parts[i].life<limit && sim->rng.chance(50, absorbChanceDenom))
 						{
 							parts[i].life++;
-							if (RNG::Ref().chance(3, 4))
+							if (sim->rng.chance(3, 4))
 								sim->kill_part(ID(r));
 							else
 								sim->part_change_type(ID(r), x+rx, y+ry, PT_SALT);
 						}
 						break;
 					case PT_CBNW:
-						if (parts[i].life<limit && RNG::Ref().chance(100, absorbChanceDenom))
+						if (parts[i].life<limit && sim->rng.chance(100, absorbChanceDenom))
 						{
 							parts[i].life++;
 							sim->part_change_type(ID(r), x+rx, y+ry, PT_CO2);
 						}
 						break;
 					case PT_PSTE:
-						if (parts[i].life<limit && RNG::Ref().chance(20, absorbChanceDenom))
+						if (parts[i].life<limit && sim->rng.chance(20, absorbChanceDenom))
 						{
 							parts[i].life++;
 							sim->create_part(ID(r), x+rx, y+ry, PT_CLST);
@@ -98,31 +99,39 @@ static int update(UPDATE_FUNC_ARGS)
 						continue;
 					}
 				}
+			}
+		}
 	}
 	else
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+	{
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if ((!r)&&parts[i].life>=1)//if nothing then create water
 					{
-						np = sim->create_part(-1,x+rx,y+ry,PT_WATR);
+						auto np = sim->create_part(-1,x+rx,y+ry,PT_WATR);
 						if (np>-1) parts[i].life--;
 					}
 				}
-	for ( trade = 0; trade<9; trade ++)
+			}
+		}
+	}
+	for (auto trade = 0; trade<9; trade ++)
 	{
-		rx = RNG::Ref().between(-2, 2);
-		ry = RNG::Ref().between(-2, 2);
-		if (BOUNDS_CHECK && (rx || ry))
+		auto rx = sim->rng.between(-2, 2);
+		auto ry = sim->rng.between(-2, 2);
+		if (rx || ry)
 		{
-			r = pmap[y+ry][x+rx];
+			auto r = pmap[y+ry][x+rx];
 			if (!r)
 				continue;
 			if (TYP(r)==PT_SPNG&&(parts[i].life>parts[ID(r)].life)&&parts[i].life>0)//diffusion
 			{
-				tmp = parts[i].life - parts[ID(r)].life;
+				auto tmp = parts[i].life - parts[ID(r)].life;
 				if (tmp ==1)
 				{
 					parts[ID(r)].life ++;
@@ -138,14 +147,16 @@ static int update(UPDATE_FUNC_ARGS)
 			}
 		}
 	}
-	tmp = 0;
+	auto tmp = 0;
 	if (parts[i].life>0)
 	{
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if (!r)
 						continue;
 					if (TYP(r)==PT_FIRE)
@@ -157,20 +168,25 @@ static int update(UPDATE_FUNC_ARGS)
 							parts[ID(r)].life--;
 					}
 				}
+			}
+		}
 	}
 	if (tmp && parts[i].life>3)
 		parts[i].life -= parts[i].life/3;
 	if (tmp>1)
 		tmp = tmp/2;
 	if (tmp || parts[i].temp>=374)
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+	{
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if ((!r)&&parts[i].life>=1)//if nothing then create steam
 					{
-						np = sim->create_part(-1,x+rx,y+ry,PT_WTRV);
+						auto np = sim->create_part(-1,x+rx,y+ry,PT_WTRV);
 						if (np>-1)
 						{
 							parts[np].temp = parts[i].temp;
@@ -180,6 +196,9 @@ static int update(UPDATE_FUNC_ARGS)
 						}
 					}
 				}
+			}
+		}
+	}
 	if (tmp>0)
 	{
 		if (parts[i].life>tmp)

@@ -7,7 +7,7 @@ void Element::Element_TTAN()
 {
 	Identifier = "DEFAULT_PT_TTAN";
 	Name = "TTAN";
-	Colour = PIXPACK(0x909090);
+	Colour = 0x909090_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -56,12 +56,16 @@ static int update(UPDATE_FUNC_ARGS)
 	else if (nt <= 6)
 	{
 		for (int rx = -1; rx <= 1; rx++)
+		{
 			for (int ry = -1; ry <= 1; ry++)
-				if ((!rx != !ry) && BOUNDS_CHECK)
+			{
+				if (!rx != !ry)
 				{
 					if (TYP(pmap[y+ry][x+rx]) == PT_TTAN)
 						ttan++;
 				}
+			}
+		}
 	}
 
 	if (ttan >= 2)

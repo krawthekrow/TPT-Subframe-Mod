@@ -1,7 +1,4 @@
-#ifndef OPTIONSCONTROLLER_H_
-#define OPTIONSCONTROLLER_H_
-#include "Config.h"
-
+#pragma once
 #include <functional>
 
 class GameModel;
@@ -28,9 +25,12 @@ public:
 	void SetEdgeMode(int edgeMode);
 	void SetTemperatureScale(int temperatureScale);
 	void SetFullscreen(bool fullscreen);
-	void SetAltFullscreen(bool altFullscreen);
+	void SetChangeResolution(bool newChangeResolution);
 	void SetForceIntegerScaling(bool forceIntegerScaling);
+	void SetBlurryScaling(bool newBlurryScaling);
 	void SetScale(int scale);
+	void SetGraveExitsConsole(bool graveExitsConsole);
+	void SetNativeClipoard(bool nativeClipoard);
 	void SetResizable(bool resizable);
 	void SetFastQuit(bool fastquit);
 	void SetDecoSpace(int decoSpace);
@@ -44,5 +44,3 @@ public:
 	OptionsView * GetView();
 	virtual ~OptionsController();
 };
-
-#endif /* OPTIONSCONTROLLER_H_ */

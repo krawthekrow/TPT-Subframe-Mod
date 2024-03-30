@@ -6,7 +6,7 @@ void Element::Element_FOG()
 {
 	Identifier = "DEFAULT_PT_FOG";
 	Name = "FOG";
-	Colour = PIXPACK(0xAAAAAA);
+	Colour = 0xAAAAAA_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_GAS;
 	Enabled = 1;
@@ -48,22 +48,27 @@ void Element::Element_FOG()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry;
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				if ((sim->elements[TYP(r)].Properties&TYPE_SOLID) && RNG::Ref().chance(1, 10) && parts[i].life==0 && !(TYP(r)==PT_CLNE || TYP(r)==PT_PCLN)) // TODO: should this also exclude BCLN?
+				if ((elements[TYP(r)].Properties&TYPE_SOLID) && sim->rng.chance(1, 10) && parts[i].life==0 && !(TYP(r)==PT_CLNE || TYP(r)==PT_PCLN)) // TODO: should this also exclude BCLN?
 				{
 					sim->part_change_type(i,x,y,PT_RIME);
 				}
 				if (TYP(r)==PT_SPRK)
 				{
-					parts[i].life += RNG::Ref().between(0, 19);
+					parts[i].life += sim->rng.between(0, 19);
 				}
 			}
+		}
+	}
 	return 0;
 }

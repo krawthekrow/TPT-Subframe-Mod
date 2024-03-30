@@ -1,15 +1,15 @@
-#ifndef GAMEMODEL_H
-#define GAMEMODEL_H
-#include "Config.h"
+#pragma once
 #include "simulation/SimulationData.h"
-
-#include <vector>
-#include <deque>
-#include <memory>
-
 #include "gui/interface/Colour.h"
 #include "client/User.h"
 #include "gui/interface/Point.h"
+#include <vector>
+#include <deque>
+#include <memory>
+#include <optional>
+#include <array>
+
+constexpr auto NUM_TOOLINDICES = 4;
 
 class Menu;
 class Tool;
@@ -25,6 +25,11 @@ class Renderer;
 class Snapshot;
 struct SnapshotDelta;
 class GameSave;
+
+namespace http
+{
+	class ExecVoteRequest;
+};
 
 class ToolSelection
 {
@@ -45,12 +50,12 @@ struct HistoryEntry
 
 class GameModel
 {
+	std::unique_ptr<http::ExecVoteRequest> execVoteRequest;
+
 private:
 	std::vector<Notification*> notifications;
-	//int clipboardSize;
-	//unsigned char * clipboardData;
-	GameSave * clipboard;
-	GameSave * placeSave;
+	std::unique_ptr<GameSave> placeSave;
+	std::unique_ptr<GameSave> transformedPlaceSave;
 	std::deque<String> consoleLog;
 	std::vector<GameView*> observers;
 	std::vector<Tool*> toolList;
@@ -67,12 +72,12 @@ private:
 	int activeMenu;
 	int lastRegularMenu;
 	int currentBrush;
-	std::vector<Brush *> brushList;
-	SaveInfo * currentSave;
-	SaveFile * currentFile;
+	std::vector<std::unique_ptr<Brush>> brushList;
+	std::unique_ptr<SaveInfo> currentSave;
+	std::unique_ptr<SaveFile> currentFile;
 	Tool * lastTool;
 	int activeToolset;
-	Tool * toolsets[TS_TOTAL][4];
+	std::array<Tool *, NUM_TOOLINDICES> toolsets[TS_TOTAL];
 	User currentUser;
 	float toolStrength;
 	std::deque<HistoryEntry> history;
@@ -110,6 +115,7 @@ private:
 	void notifyZoomChanged();
 	void notifyClipboardChanged();
 	void notifyPlaceSaveChanged();
+	void notifyTransformedPlaceSaveChanged();
 	void notifyColourSelectorColourChanged();
 	void notifyColourSelectorVisibilityChanged();
 	void notifyColourPresetsChanged();
@@ -120,9 +126,16 @@ private:
 	void notifyToolTipChanged();
 	void notifyQuickOptionsChanged();
 	void notifyLastToolChanged();
+
+	void SaveToSimParameters(const GameSave &saveData);
+
+	std::optional<int> queuedVote;
+
 public:
 	GameModel();
 	~GameModel();
+
+	void Tick();
 
 	void SetEdgeMode(int edgeMode);
 	int GetEdgeMode();
@@ -181,19 +194,25 @@ public:
 	std::vector<Tool*> GetToolList();
 	std::vector<Tool*> GetUnlistedTools();
 
-	Brush * GetBrush();
-	std::vector<Brush*> GetBrushList();
+	Brush &GetBrush();
+	Brush *GetBrushByID(int i);
 	int GetBrushID();
+	int BrushListSize() const
+	{
+		return int(brushList.size());
+	}
 	void SetBrushID(int i);
 
 	bool GetWasModified();
 	void SetWasModified(bool value);
 
 	void SetVote(int direction);
-	SaveInfo * GetSave();
-	SaveFile * GetSaveFile();
-	void SetSave(SaveInfo * newSave, bool invertIncludePressure);
-	void SetSaveFile(SaveFile * newSave, bool invertIncludePressure);
+	SaveInfo *GetSave(); // non-owning
+	std::unique_ptr<SaveInfo> TakeSave();
+	const SaveFile *GetSaveFile() const;
+	std::unique_ptr<SaveFile> TakeSaveFile();
+	void SetSave(std::unique_ptr<SaveInfo> newSave, bool invertIncludePressure);
+	void SetSaveFile(std::unique_ptr<SaveFile> newSave, bool invertIncludePressure);
 	void AddObserver(GameView * observer);
 	bool AreParticlesInSubframeOrder();
 
@@ -211,6 +230,7 @@ public:
 	void ShowGravityGrid(bool showGrid);
 	bool GetGravityGrid();
 	void ClearSimulation();
+	void ReloadParticleOrder();
 	std::vector<Menu*> GetMenuList();
 	std::vector<QuickOption*> GetQuickOptions();
 	void SetActiveMenu(int menuID);
@@ -238,12 +258,14 @@ public:
 	ui::Point AdjustZoomCoords(ui::Point position);
 	void SetZoomWindowPosition(ui::Point position);
 	ui::Point GetZoomWindowPosition();
-	void SetClipboard(GameSave * save);
-	void SetPlaceSave(GameSave * save);
+	void SetClipboard(std::unique_ptr<GameSave> save);
+	void SetPlaceSave(std::unique_ptr<GameSave> save);
+	void TransformPlaceSave(Mat2<int> transform, Vec2<int> nudge);
 	void Log(String message, bool printToFile);
 	std::deque<String> GetLog();
-	GameSave * GetClipboard();
-	GameSave * GetPlaceSave();
+	const GameSave *GetClipboard() const;
+	const GameSave *GetPlaceSave() const;
+	const GameSave *GetTransformedPlaceSave() const;
 	bool GetMouseClickRequired();
 	void SetMouseClickRequired(bool mouseClickRequired);
 	bool GetIncludePressure();
@@ -262,6 +284,8 @@ public:
 
 	ByteString SelectNextIdentifier;
 	int SelectNextTool;
-};
 
-#endif // GAMEMODEL_H
+	void UpdateUpTo(int upTo);
+	void BeforeSim();
+	void AfterSim();
+};

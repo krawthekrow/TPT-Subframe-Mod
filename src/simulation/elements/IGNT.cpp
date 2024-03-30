@@ -6,7 +6,7 @@ void Element::Element_IGNT()
 {
 	Identifier = "DEFAULT_PT_IGNT";
 	Name = "IGNC";
-	Colour = PIXPACK(0xC0B050);
+	Colour = 0xC0B050_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_EXPLOSIVE;
 	Enabled = 1;
@@ -49,39 +49,42 @@ void Element::Element_IGNT()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	 int r, rx, ry, rt;
 	if(parts[i].tmp==0)
 	{
-		for (rx=-1; rx<2; rx++)
-			for (ry=-1; ry<2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+		for (auto rx = -1; rx <= 1; rx++)
+		{
+			for (auto ry = -1; ry <= 1; ry++)
+			{
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if (!r)
 						continue;
-					rt = TYP(r);
+					auto rt = TYP(r);
 					if (rt==PT_FIRE || rt==PT_PLSM || rt==PT_SPRK || rt==PT_LIGH || (rt==PT_IGNT && parts[ID(r)].life==1))
 					{
 						parts[i].tmp = 1;
 					}
 				}
+			}
+		}
 	}
 	else if(parts[i].life > 0)
 	{
-		if (RNG::Ref().chance(2, 3))
+		if (sim->rng.chance(2, 3))
 		{
-			int nb = sim->create_part(-1, x + RNG::Ref().between(-1, 1), y + RNG::Ref().between(-1, 1), PT_EMBR);
+			int nb = sim->create_part(-1, x + sim->rng.between(-1, 1), y + sim->rng.between(-1, 1), PT_EMBR);
 			if (nb!=-1) {
 				parts[nb].tmp = 0;
 				parts[nb].life = 30;
-				parts[nb].vx = float(RNG::Ref().between(-10, 10));
-				parts[nb].vy = float(RNG::Ref().between(-10, 10));
+				parts[nb].vx = float(sim->rng.between(-10, 10));
+				parts[nb].vy = float(sim->rng.between(-10, 10));
 				parts[nb].temp = restrict_flt(parts[i].temp-273.15f+400.0f, MIN_TEMP, MAX_TEMP);
 			}
 		}
 		else
 		{
-			sim->create_part(-1, x + RNG::Ref().between(-1, 1), y + RNG::Ref().between(-1, 1), PT_FIRE);
+			sim->create_part(-1, x + sim->rng.between(-1, 1), y + sim->rng.between(-1, 1), PT_FIRE);
 		}
 		parts[i].life--;
 	}

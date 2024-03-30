@@ -1,21 +1,16 @@
 #include "simulation/ElementCommon.h"
+#include "STKM.h"
 
 static int update(UPDATE_FUNC_ARGS);
 static bool createAllowed(ELEMENT_CREATE_ALLOWED_FUNC_ARGS);
 static void changeType(ELEMENT_CHANGETYPE_FUNC_ARGS);
 static void Free(Simulation *sim, unsigned char i);
-bool Element_FIGH_CanAlloc(Simulation *sim);
-int Element_FIGH_Alloc(Simulation *sim);
-void Element_FIGH_NewFighter(Simulation *sim, int fighterID, int i, int elem);
-int Element_STKM_graphics(GRAPHICS_FUNC_ARGS);
-void Element_STKM_init_legs(Simulation * sim, playerst *playerp, int i);
-int Element_STKM_run_stickman(playerst *playerp, UPDATE_FUNC_ARGS);
 
 void Element::Element_FIGH()
 {
 	Identifier = "DEFAULT_PT_FIGH";
 	Name = "FIGH";
-	Colour = PIXPACK(0xFFE0A0);
+	Colour = 0xFFE0A0_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SPECIAL;
 	Enabled = 1;
@@ -43,6 +38,7 @@ void Element::Element_FIGH()
 	Description = "Fighter. Tries to kill stickmen. You must first give it an element to kill him with.";
 
 	Properties = PROP_NOCTYPEDRAW;
+	CarriesTypeIn = 1U << FIELD_CTYPE;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;
@@ -63,6 +59,8 @@ void Element::Element_FIGH()
 
 static int update(UPDATE_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	if (parts[i].tmp < 0 || parts[i].tmp >= MAX_FIGHTERS)
 	{
 		sim->kill_part(i);
@@ -70,7 +68,7 @@ static int update(UPDATE_FUNC_ARGS)
 	}
 	playerst* figh = &sim->fighters[(unsigned char)parts[i].tmp];
 
-	int tarx, tary;
+	int tarx = 0, tary = 0;
 
 	parts[i].tmp2 = 0; //0 - stay in place, 1 - seek a stick man
 
@@ -103,8 +101,8 @@ static int update(UPDATE_FUNC_ARGS)
 		if ((pow(float(tarx-x), 2) + pow(float(tary-y), 2))<600)
 		{
 			if (figh->elem == PT_LIGH || figh->elem == PT_NEUT
-			    || sim->elements[figh->elem].Properties & (PROP_DEADLY | PROP_RADIOACTIVE)
-			    || sim->elements[figh->elem].DefaultProperties.temp >= 323 || sim->elements[figh->elem].DefaultProperties.temp <= 243)
+			    || elements[figh->elem].Properties & (PROP_DEADLY | PROP_RADIOACTIVE)
+			    || elements[figh->elem].DefaultProperties.temp >= 323 || elements[figh->elem].DefaultProperties.temp <= 243)
 				figh->comm = (int)figh->comm | 0x08;
 		}
 		else if (tarx<x)

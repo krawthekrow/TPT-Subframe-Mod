@@ -113,26 +113,27 @@ void DirectionSelector::Draw(const ui::Point& screenPos)
 {
 	Graphics * g = GetGraphics();
 	auto handleTrackRadius = radius + handleRadius;
-	ui::Point center = screenPos + handleTrackRadius;
+	ui::Point center = screenPos + Vec2{ handleTrackRadius, handleTrackRadius };
 
-	g->fillcircle(center.X, center.Y, handleTrackRadius, handleTrackRadius, backgroundColor.Red, backgroundColor.Green, backgroundColor.Blue, backgroundColor.Alpha);
-	g->drawcircle(center.X, center.Y, handleTrackRadius, handleTrackRadius, borderColor.Red, borderColor.Green, borderColor.Blue, borderColor.Alpha);
+	g->BlendFilledEllipse(center, { handleTrackRadius, handleTrackRadius }, backgroundColor);
+	g->BlendEllipse(center, { handleTrackRadius, handleTrackRadius }, borderColor);
 
 	for (auto &point : snapPoints)
 	{
-		g->fillrect(
-			(center.X + point.offset.X) - snapPointRadius,
-			(center.Y + point.offset.Y) - snapPointRadius,
-			snapPointRadius * 2 + 1, snapPointRadius * 2 + 1,
-			snapPointColor.Red, snapPointColor.Green, snapPointColor.Blue, altDown ? (int)(snapPointColor.Alpha / 2) : snapPointColor.Alpha
+		g->BlendFilledRect(
+			RectBetween(
+				center + point.offset - Vec2{ snapPointRadius, snapPointRadius },
+				center + point.offset + Vec2{ snapPointRadius, snapPointRadius }
+			),
+			snapPointColor.NoAlpha().WithAlpha(altDown ? (int)(snapPointColor.Alpha / 2) : snapPointColor.Alpha)
 		);
 	}
 
-	g->fillcircle(center.X + value.offset.X, center.Y + value.offset.Y, handleRadius, handleRadius, foregroundColor.Red, foregroundColor.Green, foregroundColor.Blue, (mouseHover || mouseDown) ? std::min((int)(foregroundColor.Alpha * 1.5f), 255) : foregroundColor.Alpha);
-	g->drawcircle(center.X + value.offset.X, center.Y + value.offset.Y, handleRadius, handleRadius, borderColor.Red, borderColor.Green, borderColor.Blue, borderColor.Alpha);
+	g->BlendFilledEllipse(center + value.offset, { handleRadius, handleRadius }, foregroundColor.NoAlpha().WithAlpha((mouseHover || mouseDown) ? std::min(int(foregroundColor.Alpha * 1.5f), 255) : foregroundColor.Alpha));
+	g->BlendEllipse(center + value.offset, { handleRadius, handleRadius }, borderColor);
 }
 
-void DirectionSelector::OnMouseMoved(int x, int y, int dx, int dy)
+void DirectionSelector::OnMouseMoved(int x, int y)
 {
 	if (mouseDown)
 	{
@@ -141,11 +142,14 @@ void DirectionSelector::OnMouseMoved(int x, int y, int dx, int dy)
 	CheckHovering(x, y);
 }
 
-void DirectionSelector::OnMouseClick(int x, int y, unsigned button)
+void DirectionSelector::OnMouseDown(int x, int y, unsigned button)
 {
-	mouseDown = true;
-	SetPositionAbs({ x, y });
-	CheckHovering(x, y);
+	if (MouseDownInside)
+	{
+		mouseDown = true;
+		SetPositionAbs({ x - Position.X, y - Position.Y });
+		CheckHovering(x - Position.X, y - Position.Y);
+	}
 }
 
 void DirectionSelector::OnMouseUp(int x, int y, unsigned button)

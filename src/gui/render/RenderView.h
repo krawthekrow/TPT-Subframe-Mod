@@ -1,8 +1,6 @@
-#ifndef RENDERVIEW_H_
-#define RENDERVIEW_H_
-
-#include <vector>
+#pragma once
 #include "gui/interface/Window.h"
+#include <vector>
 
 class ModeCheckbox;
 
@@ -34,5 +32,3 @@ public:
 	void ToolTip(ui::Point senderPosition, String toolTip) override;
 	virtual ~RenderView();
 };
-
-#endif /* RENDERVIEW_H_ */

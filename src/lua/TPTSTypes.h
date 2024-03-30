@@ -1,7 +1,4 @@
-#ifndef TPTSTYPES_H_
-#define TPTSTYPES_H_
-#include "Config.h"
-
+#pragma once
 #include "common/String.h"
 #include "gui/interface/Point.h"
 #include <variant>
@@ -118,5 +115,3 @@ public:
 	PointType(int pointX, int pointY);
 	ui::Point Value();
 };
-
-#endif /* TPTSTYPES_H_ */

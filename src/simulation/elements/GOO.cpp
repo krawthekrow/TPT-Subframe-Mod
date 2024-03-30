@@ -6,7 +6,7 @@ void Element::Element_GOO()
 {
 	Identifier = "DEFAULT_PT_GOO";
 	Name = "GOO";
-	Colour = PIXPACK(0x804000);
+	Colour = 0x804000_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -51,7 +51,7 @@ constexpr float ADVECTION = 0.1f;
 static int update(UPDATE_FUNC_ARGS)
 {
 	if (!parts[i].life && sim->pv[y/CELL][x/CELL]>1.0f)
-		parts[i].life = RNG::Ref().between(300, 379);
+		parts[i].life = sim->rng.between(300, 379);
 	if (parts[i].life)
 	{
 		parts[i].vx += ADVECTION*sim->vx[y/CELL][x/CELL];

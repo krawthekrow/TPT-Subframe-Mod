@@ -1,11 +1,28 @@
-#ifndef UTILS_H
-#define UTILS_H
-#include "Config.h"
+#pragma once
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
 #include <vector>
+
+template<class Signed>
+inline std::pair<Signed, Signed> floorDiv(Signed a, Signed b)
+{
+	auto quo = a / b;
+	auto rem = a % b;
+	if (a < Signed(0) && rem)
+	{
+		quo -= Signed(1);
+		rem += b;
+	}
+	return { quo, rem };
+}
+
+template<class Signed>
+inline std::pair<Signed, Signed> ceilDiv(Signed a, Signed b)
+{
+	return floorDiv(a + b - Signed(1), b);
+}
 
 //Linear interpolation
 template <typename T> inline T LinearInterpolate(T val1, T val2, T lowerCoord, T upperCoord, T coord)
@@ -34,6 +51,11 @@ inline int isign(float i)
 	return 0;
 }
 
+inline int iabs(int i)
+{
+	return i * isign(i);
+}
+
 inline unsigned clamp_flt(float f, float min, float max)
 {
 	if (f<min)
@@ -55,51 +77,9 @@ inline float restrict_flt(float f, float min, float max)
 	return f;
 }
 
-void save_presets(int do_update);
-
-void load_presets(void);
-
-void strcaturl(char *dst, const char *src);
-
-void strappend(char *dst, const char *src);
-
-void *file_load(char *fn, int *size);
-
-extern char *clipboard_text;
-
 void HSV_to_RGB(int h,int s,int v,int *r,int *g,int *b);
-
 void RGB_to_HSV(int r,int g,int b,int *h,int *s,int *v);
-
 void membwand(void * dest, void * src, size_t destsize, size_t srcsize);
-
-// a b
-// c d
-
-struct matrix2d {
-	float a,b,c,d;
-};
-typedef struct matrix2d matrix2d;
-
-// column vector
-struct vector2d {
-	float x,y;
-};
-typedef struct vector2d vector2d;
-
-matrix2d m2d_multiply_m2d(matrix2d m1, matrix2d m2);
-vector2d m2d_multiply_v2d(matrix2d m, vector2d v);
-matrix2d m2d_multiply_float(matrix2d m, float s);
-vector2d v2d_multiply_float(vector2d v, float s);
-
-vector2d v2d_add(vector2d v1, vector2d v2);
-vector2d v2d_sub(vector2d v1, vector2d v2);
-
-matrix2d m2d_new(float me0, float me1, float me2, float me3);
-vector2d v2d_new(float x, float y);
-
-extern vector2d v2d_zero;
-extern matrix2d m2d_identity;
 
 class ByteString;
 
@@ -110,5 +90,3 @@ bool byteStringEqualsLiteral(const ByteString &str, const char (&lit)[N])
 {
 	return byteStringEqualsString(str, lit, N - 1U);
 }
-
-#endif

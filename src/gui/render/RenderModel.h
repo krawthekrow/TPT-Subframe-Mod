@@ -1,7 +1,4 @@
-#ifndef RENDERMODEL_H_
-#define RENDERMODEL_H_
-#include "Config.h"
-
+#pragma once
 #include <vector>
 
 class RenderView;
@@ -30,5 +27,3 @@ public:
 	void LoadRenderPreset(int presetNum);
 	virtual ~RenderModel();
 };
-
-#endif /* RENDERMODEL_H_ */

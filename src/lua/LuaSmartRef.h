@@ -1,18 +1,15 @@
 #pragma once
-
 #include "LuaCompat.h"
 
 class LuaSmartRef
 {
-	int ref;
-	lua_State *rootl;
+	int ref = LUA_REFNIL;
 
 public:
-	LuaSmartRef(lua_State *l);
 	~LuaSmartRef();
-	void Assign(lua_State *l, int index); // Copies the value before getting reference, stack unchanged.
+	void Assign(lua_State *L, int index); // Copies the value before getting reference, stack unchanged.
 	void Clear();
-	int Push(lua_State *l); // Always pushes exactly one value, possibly nil.
+	int Push(lua_State *L); // Always pushes exactly one value, possibly nil.
 
 	inline operator int() const
 	{

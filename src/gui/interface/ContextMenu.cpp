@@ -1,8 +1,7 @@
 #include "ContextMenu.h"
-
 #include "graphics/Graphics.h"
-
-#include "common/tpt-minmax.h"
+#include "SimulationConfig.h"
+#include <algorithm>
 
 using namespace ui;
 
@@ -95,6 +94,6 @@ void ContextMenu::AddItem(ContextMenuItem item)
 void ContextMenu::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	g->fillrect(Position.X, Position.Y, Size.X, Size.Y, 100, 100, 100, 255);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, Appearance.BackgroundInactive.Red, Appearance.BackgroundInactive.Green, Appearance.BackgroundInactive.Blue, Appearance.BackgroundInactive.Alpha);
+	g->DrawFilledRect(RectSized(Position, Size), 0x646464_rgb);
+	g->BlendRect(RectSized(Position, Size), Appearance.BackgroundInactive);
 }

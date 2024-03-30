@@ -1,18 +1,17 @@
 #include "simulation/ElementCommon.h"
+#include "PIPE.h"
+#include "SOAP.h"
 
-int Element_PIPE_update(UPDATE_FUNC_ARGS);
-int Element_PIPE_graphics(GRAPHICS_FUNC_ARGS);
-void Element_PIPE_transfer_pipe_to_part(Simulation * sim, Particle *pipe, Particle *part, bool STOR);
+static void props_pipe_to_part(const Particle *pipe, Particle *part, bool STOR);
 static void transfer_part_to_pipe(Particle *part, Particle *pipe);
 static void transfer_pipe_to_pipe(Particle *src, Particle *dest, bool STOR);
 static void pushParticle(Simulation * sim, int i, int count, int original);
-void Element_SOAP_detach(Simulation * sim, int i);
 
 void Element::Element_PIPE()
 {
 	Identifier = "DEFAULT_PT_PIPE";
 	Name = "PIPE";
-	Colour = PIXPACK(0x444444);
+	Colour = 0x444444_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_FORCE;
 	Enabled = 1;
@@ -39,6 +38,7 @@ void Element::Element_PIPE()
 	Description = "PIPE, moves particles around. Once the BRCK generates, erase some for the exit. Then the PIPE generates and is usable.";
 
 	Properties = TYPE_SOLID|PROP_LIFE_DEC;
+	CarriesTypeIn = 1U << FIELD_CTYPE;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;
@@ -77,40 +77,21 @@ constexpr int PPIP_TMPFLAG_TRIGGER_OFF     = 0x08000000;
 constexpr int PPIP_TMPFLAG_TRIGGER_ON      = 0x10000000;
 constexpr int PPIP_TMPFLAG_TRIGGERS        = 0x1C000000;
 
-signed char pos_1_rx[] = { -1,-1,-1, 0, 0, 1, 1, 1 };
-signed char pos_1_ry[] = { -1, 0, 1,-1, 1,-1, 0, 1 };
+const std::array<Vec2<int>, 8> Element_PIPE_offsets = {{
+	{ -1, -1 },
+	{ -1,  0 },
+	{ -1,  1 },
+	{  0, -1 },
+	{  0,  1 },
+	{  1, -1 },
+	{  1,  0 },
+	{  1,  1 },
+}};
 
-static void transformPatch(Particle &part, const int (&patch)[8])
+void Element_PIPE_transformPatchOffsets(Particle &part, const std::array<int, 8> &offsetMap)
 {
-	if (part.tmp & 0x00000200) part.tmp = (part.tmp & 0xFFFFE3FF) | (patch[(part.tmp & 0x00001C00) >> 10] << 10);
-	if (part.tmp & 0x00002000) part.tmp = (part.tmp & 0xFFFE3FFF) | (patch[(part.tmp & 0x0001C000) >> 14] << 14);
-}
-
-void Element_PIPE_patchR(Particle &part)
-{
-	// 035 -> 210
-	// 1 6 -> 4 3
-	// 247 -> 765
-	const int patchR[] = { 2, 4, 7, 1, 6, 0, 3, 5 };
-	transformPatch(part, patchR);
-}
-
-void Element_PIPE_patchH(Particle &part)
-{
-	// 035 -> 530
-	// 1 6 -> 6 1
-	// 247 -> 742
-	const int patchH[] = { 5, 6, 7, 3, 4, 0, 1, 2 };
-	transformPatch(part, patchH);
-}
-
-void Element_PIPE_patchV(Particle &part)
-{
-	// 035 -> 247
-	// 1 6 -> 1 6
-	// 247 -> 035
-	const int patchV[] = { 2, 1, 0, 4, 3, 7, 6, 5 };
-	transformPatch(part, patchV);
+	if (part.tmp & 0x00000200) part.tmp = (part.tmp & 0xFFFFE3FF) | (offsetMap[(part.tmp & 0x00001C00) >> 10] << 10);
+	if (part.tmp & 0x00002000) part.tmp = (part.tmp & 0xFFFE3FFF) | (offsetMap[(part.tmp & 0x0001C000) >> 14] << 14);
 }
 
 static unsigned int prevColor(unsigned int flags)
@@ -139,9 +120,9 @@ static unsigned int nextColor(unsigned int flags)
 
 int Element_PIPE_update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, np;
-	int rnd, rndstore;
-	if (parts[i].ctype && !sim->elements[TYP(parts[i].ctype)].Enabled)
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	if (parts[i].ctype && !elements[TYP(parts[i].ctype)].Enabled)
 		parts[i].ctype = 0;
 	if (parts[i].tmp & PPIP_TMPFLAG_TRIGGERS)
 	{
@@ -160,13 +141,13 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 		}
 		if (pause_changed)
 		{
-			int rx, ry, r;
-			for (rx=-2; rx<3; rx++)
-				for (ry=-2; ry<3; ry++)
+			for (auto rx = -2; rx <= 2; rx++)
+			{
+				for (auto ry = -2; ry <= 2; ry++)
 				{
-					if (BOUNDS_CHECK && (rx || ry))
+					if (rx || ry)
 					{
-						r = pmap[y+ry][x+rx];
+						auto r = pmap[y+ry][x+rx];
 						if (TYP(r) == PT_BRCK)
 						{
 							if (parts[i].tmp & PPIP_TMPFLAG_PAUSED)
@@ -176,6 +157,7 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 						}
 					}
 				}
+			}
 		}
 
 		if (parts[i].tmp & PPIP_TMPFLAG_TRIGGER_REVERSE)
@@ -204,12 +186,14 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 			int neighborcount = 0;
 			int count = 0;
 			// make automatic pipe pattern
-			for (rx=-1; rx<2; rx++)
-				for (ry=-1; ry<2; ry++)
-					if (BOUNDS_CHECK && (rx || ry))
+			for (auto rx = -1; rx <= 1; rx++)
+			{
+				for (auto ry = -1; ry <= 1; ry++)
+				{
+					if (rx || ry)
 					{
 						count++;
-						r = pmap[y+ry][x+rx];
+						auto r = pmap[y+ry][x+rx];
 						if (!r)
 							continue;
 						if (TYP(r) != PT_PIPE && TYP(r) != PT_PPIP)
@@ -240,6 +224,8 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 							lastneighbor = ID(r);
 						}
 					}
+				}
+			}
 			if (neighborcount == 1)
 				parts[lastneighbor].tmp |= 0x100;
 		}
@@ -256,37 +242,33 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 
 			if (nt)//there is something besides PIPE around current particle
 			{
-				rndstore = RNG::Ref().gen();
-				rnd = rndstore&7;
-				//rndstore = rndstore>>3;
-				rx = pos_1_rx[rnd];
-				ry = pos_1_ry[rnd];
-				if (BOUNDS_CHECK)
+				auto rndstore = sim->rng.gen();
+				auto rnd = rndstore&7;
+				auto rx = Element_PIPE_offsets[rnd].X;
+				auto ry = Element_PIPE_offsets[rnd].Y;
+				auto r = pmap[y+ry][x+rx];
+				if(!r)
+					r = sim->photons[y+ry][x+rx];
+				if (surround_space && !r && TYP(parts[i].ctype))  //creating at end
 				{
-					r = pmap[y+ry][x+rx];
-					if(!r)
-						r = sim->photons[y+ry][x+rx];
-					if (surround_space && !r && TYP(parts[i].ctype))  //creating at end
+					auto np = sim->create_part(-1, x+rx, y+ry, TYP(parts[i].ctype));
+					if (np!=-1)
 					{
-						np = sim->create_part(-1, x+rx, y+ry, TYP(parts[i].ctype));
-						if (np!=-1)
-						{
-							Element_PIPE_transfer_pipe_to_part(sim, parts+i, parts+np, false);
-						}
+						Element_PIPE_transfer_pipe_to_part(sim, parts+i, parts+np, false);
 					}
-					//try eating particle at entrance
-					else if (!TYP(parts[i].ctype) && (sim->elements[TYP(r)].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
-					{
-						if (TYP(r)==PT_SOAP)
-							Element_SOAP_detach(sim, ID(r));
-						transfer_part_to_pipe(parts+(ID(r)), parts+i);
-						sim->kill_part(ID(r));
-					}
-					else if (!TYP(parts[i].ctype) && TYP(r)==PT_STOR && sim->IsElement(parts[ID(r)].tmp) && (sim->elements[parts[ID(r)].tmp].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
-					{
-						// STOR stores properties in the same places as PIPE does
-						transfer_pipe_to_pipe(parts+(ID(r)), parts+i, true);
-					}
+				}
+				//try eating particle at entrance
+				else if (!TYP(parts[i].ctype) && (elements[TYP(r)].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
+				{
+					if (TYP(r)==PT_SOAP)
+						Element_SOAP_detach(sim, ID(r));
+					transfer_part_to_pipe(parts+(ID(r)), parts+i);
+					sim->kill_part(ID(r));
+				}
+				else if (!TYP(parts[i].ctype) && TYP(r)==PT_STOR && sd.IsElement(parts[ID(r)].tmp) && (elements[parts[ID(r)].tmp].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
+				{
+					// STOR stores properties in the same places as PIPE does
+					transfer_pipe_to_pipe(parts+(ID(r)), parts+i, true);
 				}
 			}
 		}
@@ -294,12 +276,13 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 	else if (!(parts[i].tmp&(PFLAG_COLORS|PFLAG_INITIALIZING)) && parts[i].life<=10)
 	{
 		// make a border
-		for (rx=-2; rx<3; rx++)
-			for (ry=-2; ry<3; ry++)
+		for (auto rx = -2; rx <= 2; rx++)
+		{
+			for (auto ry = -2; ry <= 2; ry++)
 			{
-				if (BOUNDS_CHECK && (rx || ry))
+				if (rx || ry)
 				{
-					r = pmap[y+ry][x+rx];
+					auto r = pmap[y+ry][x+rx];
 					if (!r)
 					{
 						// BRCK border
@@ -309,6 +292,7 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 					}
 				}
 			}
+		}
 		if (parts[i].life <= 1)
 			parts[i].tmp |= PFLAG_INITIALIZING;
 	}
@@ -317,25 +301,33 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 	{
 		if (!parts[i].life)
 		{
-			for (rx=-1; rx<2; rx++)
-				for (ry=-1; ry<2; ry++)
-					if (BOUNDS_CHECK && (rx || ry))
+			for (auto rx = -1; rx <= 1; rx++)
+			{
+				for (auto ry = -1; ry <= 1; ry++)
+				{
+					if (rx || ry)
 					{
 						if (!pmap[y+ry][x+rx] && sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_ALLOWAIR && sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_WALL && sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_WALLELEC && (sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_EWALL || sim->emap[(y+ry)/CELL][(x+rx)/CELL]))
 							parts[i].life=50;
 					}
+				}
+			}
 		}
 		else if (parts[i].life==5)//check for beginning of pipe single pixel
 		{
 			int issingle = 1;
-			for (rx=-1; rx<2; rx++)
-				for (ry=-1; ry<2; ry++)
-					if (BOUNDS_CHECK && (rx || ry))
+			for (auto rx = -1; rx <= 1; rx++)
+			{
+				for (auto ry = -1; ry <= 1; ry++)
+				{
+					if (rx || ry)
 					{
-						r = pmap[y+ry][x+rx];
+						auto r = pmap[y+ry][x+rx];
 						if ((TYP(r)==PT_PIPE || TYP(r) == PT_PPIP) && parts[i].life)
 							issingle = 0;
 					}
+				}
+			}
 			if (issingle)
 				parts[i].tmp |= 0x100;
 		}
@@ -351,54 +343,61 @@ int Element_PIPE_update(UPDATE_FUNC_ARGS)
 
 int Element_PIPE_graphics(GRAPHICS_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	auto &graphicscache = sd.graphicscache;
 	int t = TYP(cpart->ctype);
-	if (t>0 && t<PT_NUM && ren->sim->elements[t].Enabled)
+	if (t>0 && t<PT_NUM && elements[t].Enabled)
 	{
 		if (t == PT_STKM || t == PT_STKM2 || t == PT_FIGH)
 			return 0;
-		if (ren->graphicscache[t].isready)
+		if (graphicscache[t].isready)
 		{
-			*pixel_mode = ren->graphicscache[t].pixel_mode;
-			*cola = ren->graphicscache[t].cola;
-			*colr = ren->graphicscache[t].colr;
-			*colg = ren->graphicscache[t].colg;
-			*colb = ren->graphicscache[t].colb;
-			*firea = ren->graphicscache[t].firea;
-			*firer = ren->graphicscache[t].firer;
-			*fireg = ren->graphicscache[t].fireg;
-			*fireb = ren->graphicscache[t].fireb;
+			*pixel_mode = graphicscache[t].pixel_mode;
+			*cola = graphicscache[t].cola;
+			*colr = graphicscache[t].colr;
+			*colg = graphicscache[t].colg;
+			*colb = graphicscache[t].colb;
+			*firea = graphicscache[t].firea;
+			*firer = graphicscache[t].firer;
+			*fireg = graphicscache[t].fireg;
+			*fireb = graphicscache[t].fireb;
 		}
 		else
 		{
-			// Temp particle used for graphics.
-			Particle tpart = *cpart;
-
-			// Emulate the graphics of stored particle.
-			memset(cpart, 0, sizeof(Particle));
-			cpart->type = t;
-			cpart->temp = tpart.temp;
-			cpart->life = tpart.tmp2;
-			cpart->tmp = tpart.tmp3;
-			cpart->ctype = tpart.tmp4;
-
-			*colr = PIXR(ren->sim->elements[t].Colour);
-			*colg = PIXG(ren->sim->elements[t].Colour);
-			*colb = PIXB(ren->sim->elements[t].Colour);
-			if (ren->sim->elements[t].Graphics)
+			// We emulate the graphics of the stored particle. We need a const Particle *cpart to pass to the graphics function,
+			// but we don't have a Particle that is populated the way the graphics function expects, so we construct a temporary
+			// one and present that to it.
+			//
+			// Native graphics functions are well-behaved and use the cpart we give them, no questions asked, so we can just have
+			// the Particle on stack. Swapping the pointers in cpart with tpart takes care of passing the particle on stack to the
+			// native graphics function. Lua graphics functions are more complicated to appease: they access particle data through the
+			// particle ID, so not only do we have to give them a correctly populated Particle, it also has to be somewhere in Simulation.
+			// luaGraphicsWrapper takes care of this.
+			RGB<uint8_t> colour = elements[t].Colour;
+			*colr = colour.Red;
+			*colg = colour.Green;
+			*colb = colour.Blue;
+			auto *graphics = elements[t].Graphics;
+			if (graphics)
 			{
-				(*(ren->sim->elements[t].Graphics))(ren, cpart, nx, ny, pixel_mode, cola, colr, colg, colb, firea, firer, fireg, fireb);
+				Particle tpart;
+				props_pipe_to_part(cpart, &tpart, false);
+				auto *prevPipeSubcallCpart = gfctx.pipeSubcallCpart;
+				auto *prevPipeSubcallTpart = gfctx.pipeSubcallTpart;
+				gfctx.pipeSubcallCpart = cpart;
+				gfctx.pipeSubcallTpart = &tpart;
+				cpart = gfctx.pipeSubcallTpart;
+				graphics(GRAPHICS_FUNC_SUBCALL_ARGS);
+				cpart = gfctx.pipeSubcallCpart;
+				gfctx.pipeSubcallCpart = prevPipeSubcallCpart;
+				gfctx.pipeSubcallTpart = prevPipeSubcallTpart;
 			}
 			else
 			{
-				Element::defaultGraphics(ren, cpart, nx, ny, pixel_mode, cola, colr, colg, colb, firea, firer, fireg, fireb);
+				Element::defaultGraphics(GRAPHICS_FUNC_SUBCALL_ARGS);
 			}
-
-			// Restore original particle data.
-			*cpart = tpart;
 		}
-		//*colr = PIXR(elements[t].pcolors);
-		//*colg = PIXG(elements[t].pcolors);
-		//*colb = PIXB(elements[t].pcolors);
 	}
 	else
 	{
@@ -426,26 +425,26 @@ int Element_PIPE_graphics(GRAPHICS_FUNC_ARGS)
 	return 0;
 }
 
-void Element_PIPE_transfer_pipe_to_part(Simulation * sim, Particle *pipe, Particle *part, bool STOR)
+static void props_pipe_to_part(const Particle *pipe, Particle *part, bool STOR)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	// STOR also calls this function to move particles from STOR to PRTI
 	// PIPE was changed, so now PIPE and STOR don't use the same particle storage format
 	if (STOR)
 	{
 		part->type = TYP(pipe->tmp);
-		pipe->tmp = 0;
 	}
 	else
 	{
 		part->type = TYP(pipe->ctype);
-		pipe->ctype = 0;
 	}
 	part->temp = pipe->temp;
 	part->life = pipe->tmp2;
 	part->tmp = pipe->tmp3;
 	part->ctype = pipe->tmp4;
 
-	if (!(sim->elements[part->type].Properties & TYPE_ENERGY))
+	if (!(elements[part->type].Properties & TYPE_ENERGY))
 	{
 		part->vx = 0.0f;
 		part->vy = 0.0f;
@@ -453,6 +452,19 @@ void Element_PIPE_transfer_pipe_to_part(Simulation * sim, Particle *pipe, Partic
 	part->tmp2 = 0;
 	part->flags = 0;
 	part->dcolour = 0;
+}
+
+void Element_PIPE_transfer_pipe_to_part(Simulation * sim, Particle *pipe, Particle *part, bool STOR)
+{
+	props_pipe_to_part(pipe, part, STOR);
+	if (STOR)
+	{
+		pipe->tmp = 0;
+	}
+	else
+	{
+		pipe->ctype = 0;
+	}
 }
 
 static void transfer_part_to_pipe(Particle *part, Particle *pipe)
@@ -485,60 +497,56 @@ static void transfer_pipe_to_pipe(Particle *src, Particle *dest, bool STOR)
 
 static void pushParticle(Simulation * sim, int i, int count, int original)
 {
-	int rndstore, rnd, rx, ry, r, x, y, np, q;
 	unsigned int notctype = nextColor(sim->parts[i].tmp);
 	if (!TYP(sim->parts[i].ctype) || count >= 2)//don't push if there is nothing there, max speed of 2 per frame
 		return;
-	x = (int)(sim->parts[i].x+0.5f);
-	y = (int)(sim->parts[i].y+0.5f);
+	auto x = (int)(sim->parts[i].x+0.5f);
+	auto y = (int)(sim->parts[i].y+0.5f);
 	if( !(sim->parts[i].tmp&0x200) )
 	{
 		//normal random push
-		rndstore = RNG::Ref().gen();
+		auto rndstore = sim->rng.gen();
 		// RAND_MAX is at least 32767 on all platforms i.e. pow(8,5)-1
 		// so can go 5 cycles without regenerating rndstore
 		// (although now we use our own randomizer so maybe should reevaluate all the rndstore usages in every element)
-		for (q=0; q<3; q++)//try to push 3 times
+		for (auto q=0; q<3; q++)//try to push 3 times
 		{
-			rnd = rndstore&7;
+			auto rnd = rndstore&7;
 			rndstore = rndstore>>3;
-			rx = pos_1_rx[rnd];
-			ry = pos_1_ry[rnd];
-			if (BOUNDS_CHECK)
+			auto rx = Element_PIPE_offsets[rnd].X;
+			auto ry = Element_PIPE_offsets[rnd].Y;
+			auto r = sim->pmap[y+ry][x+rx];
+			if (!r)
+				continue;
+			else if ((TYP(r)==PT_PIPE || TYP(r) == PT_PPIP) && (sim->parts[ID(r)].tmp&PFLAG_COLORS) != notctype && !TYP(sim->parts[ID(r)].ctype))
 			{
-				r = sim->pmap[y+ry][x+rx];
-				if (!r)
-					continue;
-				else if ((TYP(r)==PT_PIPE || TYP(r) == PT_PPIP) && (sim->parts[ID(r)].tmp&PFLAG_COLORS) != notctype && !TYP(sim->parts[ID(r)].ctype))
-				{
-					transfer_pipe_to_pipe(sim->parts+i, sim->parts+(ID(r)), false);
-					if (ID(r) > original)
-						sim->parts[ID(r)].flags |= PFLAG_NORMALSPEED;//skip particle push, normalizes speed
-					count++;
-					pushParticle(sim, ID(r),count,original);
-				}
-				else if (TYP(r) == PT_PRTI) //Pass particles into PRTI for a pipe speed increase
-				{
-					int portaltmp = sim->parts[ID(r)].tmp;
-					if (portaltmp >= CHANNELS)
-						portaltmp = CHANNELS-1;
-					else if (portaltmp < 0)
-						portaltmp = 0;
-					for (int nnx = 0; nnx < 80; nnx++)
-						if (!sim->portalp[portaltmp][count][nnx].type)
-						{
-							Element_PIPE_transfer_pipe_to_part(sim, sim->parts+i, &(sim->portalp[portaltmp][count][nnx]), false);
-							count++;
-							break;
-						}
-				}
+				transfer_pipe_to_pipe(sim->parts+i, sim->parts+(ID(r)), false);
+				if (ID(r) > original)
+					sim->parts[ID(r)].flags |= PFLAG_NORMALSPEED;//skip particle push, normalizes speed
+				count++;
+				pushParticle(sim, ID(r),count,original);
+			}
+			else if (TYP(r) == PT_PRTI) //Pass particles into PRTI for a pipe speed increase
+			{
+				int portaltmp = sim->parts[ID(r)].tmp;
+				if (portaltmp >= CHANNELS)
+					portaltmp = CHANNELS-1;
+				else if (portaltmp < 0)
+					portaltmp = 0;
+				for (int nnx = 0; nnx < 80; nnx++)
+					if (!sim->portalp[portaltmp][count][nnx].type)
+					{
+						Element_PIPE_transfer_pipe_to_part(sim, sim->parts+i, &(sim->portalp[portaltmp][count][nnx]), false);
+						count++;
+						break;
+					}
 			}
 		}
 	}
 	else //predefined 1 pixel thick pipe movement
 	{
 		int coords = 7 - ((sim->parts[i].tmp>>10)&7);
-		r = sim->pmap[y+ pos_1_ry[coords]][x+ pos_1_rx[coords]];
+		auto r = sim->pmap[y+ Element_PIPE_offsets[coords].Y][x+ Element_PIPE_offsets[coords].X];
 		if ((TYP(r)==PT_PIPE || TYP(r) == PT_PPIP) && (sim->parts[ID(r)].tmp&PFLAG_COLORS) != notctype && !TYP(sim->parts[ID(r)].ctype))
 		{
 			transfer_pipe_to_pipe(sim->parts+i, sim->parts+(ID(r)), false);
@@ -564,9 +572,9 @@ static void pushParticle(Simulation * sim, int i, int count, int original)
 		}
 		else if (!r) //Move particles out of pipe automatically, much faster at ends
 		{
-			rx = pos_1_rx[coords];
-			ry = pos_1_ry[coords];
-			np = sim->create_part(-1,x+rx,y+ry,TYP(sim->parts[i].ctype));
+			auto rx = Element_PIPE_offsets[coords].X;
+			auto ry = Element_PIPE_offsets[coords].Y;
+			auto np = sim->create_part(-1,x+rx,y+ry,TYP(sim->parts[i].ctype));
 			if (np!=-1)
 			{
 				Element_PIPE_transfer_pipe_to_part(sim, sim->parts+i, sim->parts+np, false);

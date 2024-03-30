@@ -1,9 +1,7 @@
-#ifndef WINDOW_H
-#define WINDOW_H
-
+#pragma once
 #include "common/String.h"
-#include <vector>
 #include "gui/interface/Point.h"
+#include <vector>
 
 class Graphics;
 namespace ui
@@ -115,9 +113,7 @@ namespace ui
 		Component *hoverComponent;
 		ChromeStyle chrome;
 
-#ifdef DEBUG
 		bool debugMode;
-#endif
 		//These controls allow a component to call the destruction of the Window inside an event (called by the Window)
 		void finalise();
 		bool halt;
@@ -126,4 +122,3 @@ namespace ui
 
 	};
 }
-#endif // WINDOW_H

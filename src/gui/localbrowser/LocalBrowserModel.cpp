@@ -1,27 +1,24 @@
 #include "LocalBrowserModel.h"
-
 #include "LocalBrowserView.h"
-
-#include <cmath>
-
 #include "client/Client.h"
 #include "client/SaveFile.h"
+#include "client/GameSave.h"
+#include <algorithm>
 
-#include "common/tpt-minmax.h"
+constexpr auto pageSize = 20;
 
-LocalBrowserModel::LocalBrowserModel():
-	stamp(NULL),
-	currentPage(1),
-	stampToFront(1)
+LocalBrowserModel::LocalBrowserModel()
 {
-	//stampIDs = Client::Ref().GetStamps();
-	stampIDs = Client::Ref().GetStamps(0, 16);
+	stampIDs = Client::Ref().GetStamps();
 }
 
-
-std::vector<SaveFile*> LocalBrowserModel::GetSavesList()
+std::vector<SaveFile *> LocalBrowserModel::GetSavesList() // non-owning
 {
-	return savesList;
+	std::vector<SaveFile *> nonOwningSaveList;
+	std::transform(savesList.begin(), savesList.end(), std::back_inserter(nonOwningSaveList), [](auto &ptr) {
+		return ptr.get();
+	});
+	return nonOwningSaveList;
 }
 
 void LocalBrowserModel::AddObserver(LocalBrowserView * observer)
@@ -48,15 +45,22 @@ void LocalBrowserModel::notifyPageChanged()
 	}
 }
 
-SaveFile * LocalBrowserModel::GetSave()
+const SaveFile *LocalBrowserModel::GetSave()
 {
-	return stamp;
+	return stamp.get();
 }
 
-void LocalBrowserModel::SetSave(SaveFile * newStamp)
+std::unique_ptr<SaveFile> LocalBrowserModel::TakeSave()
 {
-	delete stamp;
-	stamp = new SaveFile(*newStamp);
+	return std::move(stamp);
+}
+
+void LocalBrowserModel::OpenSave(int index)
+{
+	stamp = std::move(savesList[index]);
+	savesList.clear();
+	notifyPageChanged();
+	notifySavesListChanged();
 }
 
 bool LocalBrowserModel::GetMoveToFront()
@@ -71,27 +75,21 @@ void LocalBrowserModel::SetMoveToFront(bool move)
 
 void LocalBrowserModel::UpdateSavesList(int pageNumber)
 {
-	std::vector<SaveFile*> tempSavesList = savesList;
+	ClearSelected();
 	savesList.clear();
 	currentPage = pageNumber;
-	notifyPageChanged();
-	notifySavesListChanged();
-	//notifyStampsListChanged();
-	/*for(int i = 0; i < tempSavesList.size(); i++)
-	{
-		delete tempSavesList[i];
-	}*/
 
-	stampIDs = Client::Ref().GetStamps((pageNumber-1)*20, 20);
-
-	for (size_t i = 0; i < stampIDs.size(); i++)
+	stampIDs = Client::Ref().GetStamps();
+	auto size = int(stampIDs.size());
+	for (int i = currentPage * pageSize; i < size && i < (currentPage + 1) * pageSize; i++)
 	{
-		SaveFile * tempSave = Client::Ref().GetStamp(stampIDs[i]);
+		auto tempSave = Client::Ref().GetStamp(stampIDs[i]);
 		if (tempSave)
 		{
-			savesList.push_back(tempSave);
+			savesList.push_back(std::move(tempSave));
 		}
 	}
+	notifyPageChanged();
 	notifySavesListChanged();
 }
 
@@ -102,17 +100,16 @@ void LocalBrowserModel::RescanStamps()
 
 int LocalBrowserModel::GetPageCount()
 {
-	return std::max(1, (int)(std::ceil(float(Client::Ref().GetStampsCount())/20.0f)));
+	auto size = int(stampIDs.size());
+	auto count = size / pageSize + ((size % pageSize) ? 1 : 0);
+	return count ? count : 1; // there is always at least one page; there may not be anything on it though
 }
 
 void LocalBrowserModel::SelectSave(ByteString stampID)
 {
-	for (size_t i = 0; i < selected.size(); i++)
+	if (std::find(selected.begin(), selected.end(), stampID) != selected.end())
 	{
-		if (selected[i] == stampID)
-		{
-			return;
-		}
+		return;
 	}
 	selected.push_back(stampID);
 	notifySelectedChanged();
@@ -120,19 +117,12 @@ void LocalBrowserModel::SelectSave(ByteString stampID)
 
 void LocalBrowserModel::DeselectSave(ByteString stampID)
 {
-	bool changed = false;
-restart:
-	for (size_t i = 0; i < selected.size(); i++)
+	auto it = std::remove(selected.begin(), selected.end(), stampID);
+	if (it != selected.end())
 	{
-		if (selected[i] == stampID)
-		{
-			selected.erase(selected.begin()+i);
-			changed = true;
-			goto restart; //Just ensure all cases are removed.
-		}
-	}
-	if(changed)
+		selected.erase(it, selected.end());
 		notifySelectedChanged();
+	}
 }
 
 void LocalBrowserModel::notifySelectedChanged()
@@ -143,8 +133,3 @@ void LocalBrowserModel::notifySelectedChanged()
 		cObserver->NotifySelectedChanged(this);
 	}
 }
-
-LocalBrowserModel::~LocalBrowserModel() {
-	delete stamp;
-}
-

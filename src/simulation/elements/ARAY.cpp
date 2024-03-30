@@ -1,4 +1,5 @@
 #include "simulation/ElementCommon.h"
+#include "FILT.h"
 
 static int update(UPDATE_FUNC_ARGS);
 
@@ -6,7 +7,7 @@ void Element::Element_ARAY()
 {
 	Identifier = "DEFAULT_PT_ARAY";
 	Name = "ARAY";
-	Colour = PIXPACK(0xFFBB00);
+	Colour = 0xFFBB00_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_ELEC;
 	Enabled = 1;
@@ -47,13 +48,15 @@ void Element::Element_ARAY()
 
 static int update(UPDATE_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	int short_bray_life = parts[i].life > 0 ? parts[i].life : 30;
 	int long_bray_life = parts[i].life > 0 ? parts[i].life : 1020;
 	for (int rx = -1; rx <= 1; rx++)
 	{
 		for (int ry = -1; ry <= 1; ry++)
 		{
-			if (BOUNDS_CHECK && (rx || ry))
+			if (rx || ry)
 			{
 				int r = pmap[y+ry][x+rx];
 				if (!r)
@@ -128,8 +131,7 @@ static int update(UPDATE_FUNC_ARGS)
 							{
 								if (parts[r].tmp != 6)
 								{
-									int Element_FILT_interactWavelengths(Particle* cpart, int origWl);
-									colored = Element_FILT_interactWavelengths(&parts[r], colored);
+									colored = Element_FILT_interactWavelengths(sim, &parts[r], colored);
 									if (!colored)
 										break;
 								}
@@ -170,7 +172,7 @@ static int update(UPDATE_FUNC_ARGS)
 								if (nyy!=0 || nxx!=0)
 									sim->create_part(-1, x+nxi+nxx, y+nyi+nyy, PT_SPRK);
 
-								if (!(nostop && parts[r].type==PT_SPRK && parts[r].ctype >= 0 && parts[r].ctype < PT_NUM && (sim->elements[parts[r].ctype].Properties&PROP_CONDUCTS)))
+								if (!(nostop && parts[r].type==PT_SPRK && parts[r].ctype >= 0 && parts[r].ctype < PT_NUM && (elements[parts[r].ctype].Properties&PROP_CONDUCTS)))
 									docontinue = 0;
 								else
 									docontinue = 1;

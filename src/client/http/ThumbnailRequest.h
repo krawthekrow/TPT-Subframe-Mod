@@ -1,6 +1,4 @@
-#ifndef THUMBNAILREQUEST2_H
-#define THUMBNAILREQUEST2_H
-
+#pragma once
 #include "ImageRequest.h"
 
 namespace http
@@ -8,10 +6,6 @@ namespace http
 	class ThumbnailRequest : public ImageRequest
 	{
 	public:
-		ThumbnailRequest(int saveID, int saveDate, int width, int height);
-		virtual ~ThumbnailRequest();
+		ThumbnailRequest(int saveID, int saveDate, Vec2<int> size);
 	};
 }
-
-#endif // THUMBNAILREQUEST2_H
-

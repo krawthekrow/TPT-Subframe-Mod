@@ -1,5 +1,5 @@
-#include "common/tpt-minmax.h"
 #include "simulation/ElementCommon.h"
+#include <algorithm>
 
 static int update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
@@ -8,7 +8,7 @@ void Element::Element_GRAV()
 {
 	Identifier = "DEFAULT_PT_GRAV";
 	Name = "GRAV";
-	Colour = PIXPACK(0x202020);
+	Colour = 0x202020_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_POWDERS;
 	Enabled = 1;
@@ -50,7 +50,7 @@ void Element::Element_GRAV()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	if (parts[i].vx*parts[i].vx + parts[i].vy*parts[i].vy >= 0.1f && RNG::Ref().chance(1, 512))
+	if (parts[i].vx*parts[i].vx + parts[i].vy*parts[i].vy >= 0.1f && sim->rng.chance(1, 512))
 	{
 		if (!parts[i].life)
 			parts[i].life = 48;
@@ -63,12 +63,12 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 {
 	int GRAV_R, GRAV_B, GRAV_G, GRAV_R2, GRAV_B2, GRAV_G2;
 
-	GRAV_R = std::abs((ren->sim->currentTick%120)-60);
-	GRAV_G = std::abs(((ren->sim->currentTick+60)%120)-60);
-	GRAV_B = std::abs(((ren->sim->currentTick+120)%120)-60);
-	GRAV_R2 = std::abs((ren->sim->currentTick%60)-30);
-	GRAV_G2 = std::abs(((ren->sim->currentTick+30)%60)-30);
-	GRAV_B2 = std::abs(((ren->sim->currentTick+60)%60)-30);
+	GRAV_R = std::abs((gfctx.sim->currentTick%120)-60);
+	GRAV_G = std::abs(((gfctx.sim->currentTick+60)%120)-60);
+	GRAV_B = std::abs(((gfctx.sim->currentTick+120)%120)-60);
+	GRAV_R2 = std::abs((gfctx.sim->currentTick%60)-30);
+	GRAV_G2 = std::abs(((gfctx.sim->currentTick+30)%60)-30);
+	GRAV_B2 = std::abs(((gfctx.sim->currentTick+60)%60)-30);
 
 
 	*colr = 20;

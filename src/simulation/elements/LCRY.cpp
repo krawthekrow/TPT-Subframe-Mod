@@ -7,7 +7,7 @@ void Element::Element_LCRY()
 {
 	Identifier = "DEFAULT_PT_LCRY";
 	Name = "LCRY";
-	Colour = PIXPACK(0x505050);
+	Colour = 0x505050_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_POWERED;
 	Enabled = 1;
@@ -49,7 +49,7 @@ void Element::Element_LCRY()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, check, setto;
+	int check, setto;
 	switch (parts[i].tmp)
 	{
 	case 1:
@@ -85,11 +85,13 @@ static int update(UPDATE_FUNC_ARGS)
 		parts[i].life = 0;
 		return 0;
 	}
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
 				if (TYP(r)==PT_LCRY && parts[ID(r)].tmp == check)
@@ -97,15 +99,17 @@ static int update(UPDATE_FUNC_ARGS)
 					parts[ID(r)].tmp = setto;
 				}
 			}
+		}
+	}
 	return 0;
 }
 
 static int graphics(GRAPHICS_FUNC_ARGS)
 {
 	bool deco = false;
-	if (ren->decorations_enable && cpart->dcolour && (cpart->dcolour&0xFF000000))
+	if (gfctx.ren->decorations_enable && cpart->dcolour && (cpart->dcolour&0xFF000000))
 	{
-		if (!ren->blackDecorations) // if blackDecorations is off, always show deco
+		if (!gfctx.ren->blackDecorations) // if blackDecorations is off, always show deco
 			deco = true;
 		else if(((cpart->dcolour>>24)&0xFF) >= 250 && ((cpart->dcolour>>16)&0xFF) <= 5 && ((cpart->dcolour>>8)&0xFF) <= 5 && ((cpart->dcolour)&0xFF) <= 5) // else only render black deco
 			deco = true;

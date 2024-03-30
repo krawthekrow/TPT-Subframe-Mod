@@ -1,21 +1,14 @@
-#ifndef SAVEUSERINFOREQUEST2_H
-#define SAVEUSERINFOREQUEST2_H
-
+#pragma once
 #include "APIRequest.h"
-
-class UserInfo;
+#include "client/UserInfo.h"
 
 namespace http
 {
 	class SaveUserInfoRequest : public APIRequest
 	{
 	public:
-		SaveUserInfoRequest(UserInfo &info);
-		virtual ~SaveUserInfoRequest();
+		SaveUserInfoRequest(UserInfo info);
 
-		bool Finish();
+		void Finish();
 	};
 }
-
-#endif // SAVEUSERINFOREQUEST2_H
-

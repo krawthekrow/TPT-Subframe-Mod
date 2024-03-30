@@ -1,19 +1,13 @@
 #include "Textbox.h"
-
-#include "Config.h"
 #include "Format.h"
-#include "PowderToy.h"
-
-#include "common/Platform.h"
+#include "PowderToySDL.h"
+#include "common/platform/Platform.h"
 #include "graphics/FontReader.h"
 #include "graphics/Graphics.h"
-
 #include "gui/interface/Engine.h"
-#include "gui/interface/Keys.h"
-#include "gui/interface/Mouse.h"
 #include "gui/interface/Point.h"
-
 #include "ContextMenu.h"
+#include <SDL.h>
 
 using namespace ui;
 
@@ -196,32 +190,9 @@ void Textbox::pasteIntoSelection()
 		cursor = getLowerSelectionBound();
 	}
 
-	int regionWidth = Size.X;
-	if (Appearance.icon)
-		regionWidth -= 13;
-	regionWidth -= Appearance.Margin.Left;
-	regionWidth -= Appearance.Margin.Right;
-
 	if (limit != String::npos)
 	{
 		newText = newText.Substr(0, limit-backingText.length());
-	}
-	if (!multiline && Graphics::textwidth(backingText + newText) > regionWidth)
-	{
-		int pLimit = regionWidth - Graphics::textwidth(backingText);
-		int pWidth = 0;
-		auto it = newText.begin();
-		while (it != newText.end())
-		{
-			auto w = Graphics::CharWidth(*it);
-			if (pWidth + w > pLimit)
-			{
-				break;
-			}
-			pWidth += w;
-			++it;
-		}
-		newText = String(newText.begin(), it);
 	}
 
 	backingText.Insert(cursor, newText);
@@ -279,9 +250,10 @@ bool Textbox::StringValid(String text)
 void Textbox::Tick(float dt)
 {
 	Label::Tick(dt);
+	auto tp = textPosition - Vec2{ scrollX, 0 };
 	if (GetParentWindow() && Visible && Enabled && IsFocused())
 	{
-		ui::Engine::Ref().TextInputRect(GetScreenPos() + textPosition + inputRectPosition - Point(1, 3), Point(Size.X - textPosition.X - inputRectPosition.X, FONT_H + 2));
+		ui::Engine::Ref().TextInputRect(GetScreenPos() + tp + inputRectPosition - Point(1, 3), Point(Size.X - tp.X - inputRectPosition.X, FONT_H + 2));
 	}
 	if (!IsFocused())
 	{
@@ -293,6 +265,32 @@ void Textbox::Tick(float dt)
 	{
 		//OnVKeyPress(keyDown, characterDown, false, false, false);
 		repeatTime = Platform::GetTime()+30;
+	}
+	if (!multiline)
+	{
+		int regionWidth = Size.X;
+		if (Appearance.icon)
+		{
+			regionWidth -= 13;
+		}
+		regionWidth -= Appearance.Margin.Left;
+		regionWidth -= Appearance.Margin.Right;
+		if (scrollX > displayTextWrapper.WrappedWidth() - regionWidth)
+		{
+			scrollX = displayTextWrapper.WrappedWidth() - regionWidth;
+		}
+		if (scrollX < cursorPositionX - regionWidth)
+		{
+			scrollX = cursorPositionX - regionWidth;
+		}
+		if (scrollX > cursorPositionX)
+		{
+			scrollX = cursorPositionX;
+		}
+		if (scrollX < 0)
+		{
+			scrollX = 0;
+		}
 	}
 }
 
@@ -366,10 +364,11 @@ void Textbox::OnVKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			StopTextEditing();
 			if (HasSelection())
 			{
-				if (getLowerSelectionBound() < 0 || getHigherSelectionBound() > (int)backingText.length())
+				int lowerBound = getLowerSelectionBound(), higherBound = getHigherSelectionBound();
+				if (lowerBound < 0 || higherBound > (int)backingText.length())
 					return;
-				backingText.Erase(getLowerSelectionBound(), getHigherSelectionBound());
-				cursor = getLowerSelectionBound();
+				backingText.Erase(lowerBound, higherBound - lowerBound);
+				cursor = lowerBound;
 				changed = true;
 			}
 			else if (backingText.length() && cursor < (int)backingText.length())
@@ -393,10 +392,11 @@ void Textbox::OnVKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl,
 			StopTextEditing();
 			if (HasSelection())
 			{
-				if (getLowerSelectionBound() < 0 || getHigherSelectionBound() > (int)backingText.length())
+				int lowerBound = getLowerSelectionBound(), higherBound = getHigherSelectionBound();
+				if (lowerBound < 0 || higherBound > (int)backingText.length())
 					return;
-				backingText.erase(backingText.begin()+getLowerSelectionBound(), backingText.begin()+getHigherSelectionBound());
-				cursor = getLowerSelectionBound();
+				backingText.Erase(lowerBound, higherBound - lowerBound);
+				cursor = lowerBound;
 				changed = true;
 			}
 			else if (backingText.length() && cursor > 0)
@@ -487,12 +487,7 @@ void Textbox::InsertText(String text)
 			cursor = getLowerSelectionBound();
 		}
 
-		int regionWidth = Size.X;
-		if (Appearance.icon)
-			regionWidth -= 13;
-		regionWidth -= Appearance.Margin.Left;
-		regionWidth -= Appearance.Margin.Right;
-		if ((limit==String::npos || backingText.length() < limit) && (Graphics::textwidth(backingText + text) <= regionWidth || multiline))
+		if (limit==String::npos || backingText.length() < limit)
 		{
 			if (cursor == (int)backingText.length())
 			{
@@ -574,17 +569,21 @@ void Textbox::OnTextEditing(String text)
 	updateSelection();
 }
 
-void Textbox::OnMouseClick(int x, int y, unsigned button)
+void Textbox::OnMouseDown(int x, int y, unsigned button)
 {
-	if (button != SDL_BUTTON_RIGHT)
+	if (MouseDownInside)
 	{
-		StopTextEditing();
-		mouseDown = true;
-		auto index = textWrapper.Point2Index(x-textPosition.X, y-textPosition.Y);
-		cursor = index.raw_index;
-		resetCursorPosition();
+		if (button != SDL_BUTTON_RIGHT)
+		{
+			StopTextEditing();
+			mouseDown = true;
+			auto tp = textPosition - Vec2{ scrollX, 0 };
+			auto index = textWrapper.Point2Index(x-Position.X-tp.X, y-Position.Y-tp.Y);
+			cursor = index.raw_index;
+			resetCursorPosition();
+		}
 	}
-	Label::OnMouseClick(x, y, button);
+	Label::OnMouseDown(x, y, button);
 }
 
 void Textbox::OnMouseUp(int x, int y, unsigned button)
@@ -593,15 +592,16 @@ void Textbox::OnMouseUp(int x, int y, unsigned button)
 	Label::OnMouseUp(x, y, button);
 }
 
-void Textbox::OnMouseMoved(int localx, int localy, int dx, int dy)
+void Textbox::OnMouseMoved(int localx, int localy)
 {
 	if(mouseDown)
 	{
-		auto index = textWrapper.Point2Index(localx-textPosition.X, localy-textPosition.Y);
+		auto tp = textPosition - Vec2{ scrollX, 0 };
+		auto index = textWrapper.Point2Index(localx-tp.X, localy-tp.Y);
 		cursor = index.raw_index;
 		resetCursorPosition();
 	}
-	Label::OnMouseMoved(localx, localy, dx, dy);
+	Label::OnMouseMoved(localx, localy);
 }
 
 void Textbox::OnDefocus()
@@ -615,19 +615,26 @@ void Textbox::Draw(const Point& screenPos)
 	Label::Draw(screenPos);
 
 	Graphics * g = GetGraphics();
+	auto clip = RectSized(screenPos + Vec2{ 1, 1 }, Size - Vec2{ 2, 2 }) & g->GetClipRect();
+	g->SwapClipRect(clip);
+	auto tp = textPosition - Vec2{ scrollX, 0 };
 	if(IsFocused())
 	{
-		if(border) g->drawrect(screenPos.X, screenPos.Y, Size.X, Size.Y, 255, 255, 255, 255);
-		g->draw_line(screenPos.X+textPosition.X+cursorPositionX, screenPos.Y-2+textPosition.Y+cursorPositionY, screenPos.X+textPosition.X+cursorPositionX, screenPos.Y+9+textPosition.Y+cursorPositionY, 255, 255, 255, 255);
+		g->DrawLine(
+			screenPos + tp + Vec2{ cursorPositionX, cursorPositionY-2 },
+			screenPos + tp + Vec2{ cursorPositionX, cursorPositionY+9 },
+			0xFFFFFF_rgb);
 	}
 	else
 	{
 		if(!text.length())
 		{
-			g->drawtext(screenPos.X+textPosition.X, screenPos.Y+textPosition.Y, placeHolder, textColour.Red, textColour.Green, textColour.Blue, 170);
+			g->BlendText(screenPos + tp, placeHolder, textColour.NoAlpha().WithAlpha(170));
 		}
-		if(border) g->drawrect(screenPos.X, screenPos.Y, Size.X, Size.Y, 160, 160, 160, 255);
 	}
 	if(Appearance.icon)
 		g->draw_icon(screenPos.X+iconPosition.X, screenPos.Y+iconPosition.Y, Appearance.icon);
+	g->SwapClipRect(clip);
+	if(border)
+		g->DrawRect(RectSized(screenPos, Size), IsFocused() ? 0xFFFFFF_rgb : 0xA0A0A0_rgb);
 }

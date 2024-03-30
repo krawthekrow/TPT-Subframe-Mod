@@ -6,7 +6,7 @@ void Element::Element_O2()
 {
 	Identifier = "DEFAULT_PT_O2";
 	Name = "OXYG";
-	Colour = PIXPACK(0x80A0FF);
+	Colour = 0x80A0FF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_GAS;
 	Enabled = 1;
@@ -47,41 +47,46 @@ void Element::Element_O2()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r,rx,ry;
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	auto &sd = SimulationData::CRef();
+	auto &can_move = sd.can_move;
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
 
 				if (TYP(r)==PT_FIRE)
 				{
-					parts[ID(r)].temp += RNG::Ref().between(0, 99);
+					parts[ID(r)].temp += sim->rng.between(0, 99);
 					if (parts[ID(r)].tmp & 0x01)
 						parts[ID(r)].temp = 3473;
 					parts[ID(r)].tmp |= 2;
 
 					sim->create_part(i,x,y,PT_FIRE);
-					parts[i].temp += RNG::Ref().between(0, 99);
+					parts[i].temp += sim->rng.between(0, 99);
 					parts[i].tmp |= 2;
 				}
 				else if (TYP(r)==PT_PLSM && !(parts[ID(r)].tmp&4))
 				{
 					sim->create_part(i,x,y,PT_FIRE);
-					parts[i].temp += RNG::Ref().between(0, 99);
+					parts[i].temp += sim->rng.between(0, 99);
 					parts[i].tmp |= 2;
 				}
 			}
+		}
+	}
 	if (parts[i].temp > 9973.15 && sim->pv[y/CELL][x/CELL] > 250.0f)
 	{
-		int gravPos = ((y/CELL)*(XRES/CELL))+(x/CELL);
+		int gravPos = ((y/CELL)*XCELLS)+(x/CELL);
 		float gravx = sim->gravx[gravPos];
 		float gravy = sim->gravy[gravPos];
 		if (gravx*gravx + gravy*gravy > 400)
 		{
-			if (RNG::Ref().chance(1, 5))
+			if (sim->rng.chance(1, 5))
 			{
 				int j;
 				sim->create_part(i,x,y,PT_BRMT);
@@ -95,8 +100,8 @@ static int update(UPDATE_FUNC_ARGS)
 					parts[j].temp = MAX_TEMP;
 					parts[j].tmp = 0x1;
 				}
-				rx = x + RNG::Ref().between(-1, 1), ry = y + RNG::Ref().between(-1, 1), r = TYP(pmap[ry][rx]);
-				if (sim->can_move[PT_PLSM][r] || r == PT_O2)
+				auto rx = x + sim->rng.between(-1, 1), ry = y + sim->rng.between(-1, 1), r = TYP(pmap[ry][rx]);
+				if (can_move[PT_PLSM][r] || r == PT_O2)
 				{
 					j = sim->create_part(-3,rx,ry,PT_PLSM);
 					if (j > -1)

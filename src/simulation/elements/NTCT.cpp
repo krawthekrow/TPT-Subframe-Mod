@@ -1,12 +1,11 @@
 #include "simulation/ElementCommon.h"
-
-int Element_NTCT_update(UPDATE_FUNC_ARGS);
+#include "NTCT.h"
 
 void Element::Element_NTCT()
 {
 	Identifier = "DEFAULT_PT_NTCT";
 	Name = "NTCT";
-	Colour = PIXPACK(0x505040);
+	Colour = 0x505040_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_ELEC;
 	Enabled = 1;

@@ -1,21 +1,19 @@
-#ifndef STAMPSMODEL_H_
-#define STAMPSMODEL_H_
-#include "Config.h"
-
-#include <vector>
+#pragma once
 #include "common/String.h"
+#include <vector>
+#include <memory>
 
 class SaveFile;
 
 class LocalBrowserView;
 class LocalBrowserModel {
 	std::vector<ByteString> selected;
-	SaveFile * stamp;
+	std::unique_ptr<SaveFile> stamp;
 	std::vector<ByteString> stampIDs;
-	std::vector<SaveFile*> savesList;
+	std::vector<std::unique_ptr<SaveFile>> savesList;
 	std::vector<LocalBrowserView*> observers;
-	int currentPage;
-	bool stampToFront;
+	int currentPage = 0;
+	bool stampToFront = true;
 	void notifySavesListChanged();
 	void notifyPageChanged();
 	void notifySelectedChanged();
@@ -24,18 +22,16 @@ public:
 	int GetPageCount();
 	int GetPageNum() { return currentPage; }
 	void AddObserver(LocalBrowserView * observer);
-	std::vector<SaveFile *> GetSavesList();
+	std::vector<SaveFile *> GetSavesList(); // non-owning
 	void UpdateSavesList(int pageNumber);
 	void RescanStamps();
-	SaveFile * GetSave();
-	void SetSave(SaveFile * newStamp);
+	const SaveFile *GetSave();
+	std::unique_ptr<SaveFile> TakeSave();
+	void OpenSave(int index);
 	bool GetMoveToFront();
 	void SetMoveToFront(bool move);
 	std::vector<ByteString> GetSelected() { return selected; }
 	void ClearSelected() { selected.clear(); notifySelectedChanged(); }
 	void SelectSave(ByteString stampID);
 	void DeselectSave(ByteString stampID);
-	virtual ~LocalBrowserModel();
 };
-
-#endif /* STAMPSMODEL_H_ */

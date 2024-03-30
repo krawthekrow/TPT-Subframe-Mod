@@ -1,13 +1,11 @@
 #include "simulation/ElementCommon.h"
-
-int Element_VIBR_update(UPDATE_FUNC_ARGS);
-int Element_VIBR_graphics(GRAPHICS_FUNC_ARGS);
+#include "VIBR.h"
 
 void Element::Element_BVBR()
 {
 	Identifier = "DEFAULT_PT_BVBR";
 	Name = "BVBR";
-	Colour = PIXPACK(0x005000);
+	Colour = 0x005000_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;

@@ -7,6 +7,7 @@
 
 #include "gui/game/Brush.h"
 
+#include "simulation/SimulationData.h"
 #include "simulation/Simulation.h"
 
 static bool comparePoints(ui::Point a, ui::Point b)
@@ -43,6 +44,8 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 	}
 	if (samePos)
 	{
+		auto &sd = SimulationData::CRef();
+		auto &elements = sd.elements;
 		ui::Point dp = position2 - position;
 		if (
 			dp.X != 0 && dp.Y != 0 &&
@@ -64,7 +67,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 				part->y += currY - party;
 
 				int t = part->type;
-				if (sim->elements[t].Properties & TYPE_ENERGY)
+				if (elements[t].Properties & TYPE_ENERGY)
 					sim->photons[currY][currX] = PMAP(partID, t);
 				else
 					sim->pmap[currY][currX] = PMAP(partID, t);
@@ -82,7 +85,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 					if (nx < 0 || nx >= XRES || ny < 0 || ny >= YRES ||
 						sim->pmap[ny][nx] || sim->photons[ny][nx])
 					{
-						gameModel->Log("Warning: Not enough space to unstack fully.", false);
+						gameModel.Log("Warning: Not enough space to unstack fully.", false);
 						blocked = true;
 					}
 					else
@@ -123,7 +126,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 						sim->stackToolNotifShownY == position.Y
 					))
 					{
-						gameModel->Log("Warning: Not enough space to unstack fully.", false);
+						gameModel.Log("Warning: Not enough space to unstack fully.", false);
 						sim->stackToolNotifShown = true;
 						sim->stackToolNotifShownX = position.X;
 						sim->stackToolNotifShownY = position.Y;
@@ -141,7 +144,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 				part->y += (int)i * unstackDir.Y;
 				int nx = (int)(part->x + 0.5f), ny = (int)(part->y + 0.5f);
 				int t = part->type;
-				if (sim->elements[t].Properties & TYPE_ENERGY)
+				if (elements[t].Properties & TYPE_ENERGY)
 					sim->photons[ny][nx] = PMAP(partID, t);
 				else
 					sim->pmap[ny][nx] = PMAP(partID, t);
@@ -152,7 +155,7 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 	{
 		if (parts.size() > 5)
 		{
-			gameModel->Log("Warning: More than 5 stacked particles.", false);
+			gameModel.Log("Warning: More than 5 stacked particles.", false);
 		}
 		Particle *partobjs = new Particle[parts.size()];
 		for (size_t i = 0; i < parts.size(); i++)
@@ -169,35 +172,28 @@ void StackTool::ProcessParts(Simulation *sim, std::vector<int> &parts, ui::Point
 	}
 }
 
-void StackTool::Draw(Simulation *sim, Brush *cBrush, ui::Point position)
+void StackTool::Draw(Simulation *sim, Brush const &cBrush, ui::Point position)
 {
-	if (cBrush)
+	std::vector<int> parts;
+	for (int i=0; i<=sim->parts_lastActiveIndex; i++)
 	{
-		std::vector<int> parts;
-		int radiusX = cBrush->GetRadius().X, radiusY = cBrush->GetRadius().Y, sizeX = cBrush->GetSize().X, sizeY = cBrush->GetSize().Y;
-		unsigned char *bitmap = cBrush->GetBitmap();
-		for (int i=0; i<=sim->parts_lastActiveIndex; i++)
+		if (sim->parts[i].type)
 		{
-			if (sim->parts[i].type)
-			{
-				int partx = (int)(sim->parts[i].x+0.5f);
-				int party = (int)(sim->parts[i].y+0.5f);
-				int partbmpx = partx - position.X + radiusX;
-				int partbmpy = party - position.Y + radiusY;
-				if (partbmpx >= 0 && partbmpx < sizeX && partbmpy >= 0 && partbmpy < sizeY && bitmap[partbmpy * sizeX + partbmpx])
-					parts.push_back(i);
-			}
+			int partx = (int)(sim->parts[i].x+0.5f);
+			int party = (int)(sim->parts[i].y+0.5f);
+			if (cBrush.HasPoint(ui::Point(partx, party) - position))
+				parts.push_back(i);
 		}
-		ProcessParts(sim, parts, position, position);
 	}
+	ProcessParts(sim, parts, position, position);
 }
 
-void StackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2, bool dragging)
+void StackTool::DrawLine(Simulation *sim, Brush const &cBrush, ui::Point position, ui::Point position2, bool dragging)
 {
 	std::vector<ui::Point> points;
 	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
 	bool reverseXY = abs(y2-y1) > abs(x2-x1);
-	int x, y, dx, dy, sy, rx = cBrush->GetRadius().X, ry = cBrush->GetRadius().Y;
+	int x, y, dx, dy, sy, rx = cBrush.GetRadius().X, ry = cBrush.GetRadius().Y;
 	float e = 0.0f, de;
 	if (reverseXY)
 	{
@@ -262,7 +258,7 @@ void StackTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui:
 	ProcessParts(sim, parts, position, position2);
 }
 
-void StackTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2)
+void StackTool::DrawRect(Simulation *sim, Brush const &cBrush, ui::Point position, ui::Point position2)
 {
 	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
 	int i, j;

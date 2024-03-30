@@ -7,7 +7,7 @@ void Element::Element_ROCK()
 {
 	Identifier = "DEFAULT_PT_ROCK";
 	Name = "ROCK";
-	Colour = PIXPACK(0x727272);
+	Colour = 0x727272_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -69,5 +69,5 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	sim->parts[i].tmp2 = RNG::Ref().between(0, 10);
+	sim->parts[i].tmp2 = sim->rng.between(0, 10);
 }

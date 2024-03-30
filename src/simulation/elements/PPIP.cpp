@@ -1,13 +1,11 @@
 #include "simulation/ElementCommon.h"
-
-int Element_PIPE_update(UPDATE_FUNC_ARGS);
-int Element_PIPE_graphics(GRAPHICS_FUNC_ARGS);
+#include "PIPE.h"
 
 void Element::Element_PPIP()
 {
 	Identifier = "DEFAULT_PT_PPIP";
 	Name = "PPIP";
-	Colour = PIXPACK(0x444466);
+	Colour = 0x444466_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_POWERED;
 	Enabled = 1;
@@ -34,6 +32,7 @@ void Element::Element_PPIP()
 	Description = "Powered version of PIPE, use PSCN/NSCN to Activate/Deactivate.";
 
 	Properties = TYPE_SOLID|PROP_LIFE_DEC;
+	CarriesTypeIn = 1U << FIELD_CTYPE;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;

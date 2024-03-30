@@ -1,24 +1,8 @@
-#ifndef COLOUR_H
-#define COLOUR_H
+#pragma once
+
+#include "graphics/Pixel.h"
 
 namespace ui
 {
-class Colour
-{
-public:
-	unsigned char Red, Green, Blue, Alpha;
-	Colour(unsigned char red, unsigned char green, unsigned char blue):
-			Red(red), Green(green), Blue(blue), Alpha(255)
-	{
-	}
-	Colour(unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha):
-			Red(red), Green(green), Blue(blue), Alpha(alpha)
-	{
-	}
-	Colour()
-	{
-	}
-};
+	using Colour = RGBA<uint8_t>;
 }
-
-#endif

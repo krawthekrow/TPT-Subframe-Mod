@@ -1,5 +1,5 @@
-#include "common/tpt-minmax.h"
 #include "simulation/ElementCommon.h"
+#include <algorithm>
 
 static int update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
@@ -8,7 +8,7 @@ void Element::Element_WOOD()
 {
 	Identifier = "DEFAULT_PT_WOOD";
 	Name = "WOOD";
-	Colour = PIXPACK(0xC0A040);
+	Colour = 0xC0A040_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;

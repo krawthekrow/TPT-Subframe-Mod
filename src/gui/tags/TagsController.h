@@ -1,9 +1,5 @@
-#ifndef TAGSCONTROLLER_H_
-#define TAGSCONTROLLER_H_
-#include "Config.h"
-
+#pragma once
 #include "common/String.h"
-
 #include <functional>
 
 class SaveInfo;
@@ -22,7 +18,6 @@ public:
 	void RemoveTag(ByteString tag);
 	void AddTag(ByteString tag);
 	void Exit();
+	void Tick();
 	virtual ~TagsController();
 };
-
-#endif /* TAGSCONTROLLER_H_ */

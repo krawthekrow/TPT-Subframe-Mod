@@ -8,7 +8,7 @@ void Element::Element_SLCN()
 {
 	Identifier = "DEFAULT_PT_SLCN";
 	Name = "SLCN";
-	Colour = PIXPACK(0xBCCDDF);
+	Colour = 0xBCCDDF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_POWDERS;
 	Enabled = 1;
@@ -49,33 +49,33 @@ void Element::Element_SLCN()
 	Create = &create;
 }
 
-static const int SLCN_COLOUR[16] = {
-	PIXPACK(0x5A6679), PIXPACK(0x6878A1), PIXPACK(0xABBFDD), PIXPACK(0x838490),
-	PIXPACK(0xBCCDDF), PIXPACK(0x82A0D2), PIXPACK(0x5B6680), PIXPACK(0x232C3B),
-	PIXPACK(0x485067), PIXPACK(0x8B9AB6), PIXPACK(0xADB1C1), PIXPACK(0xC3C6D1),
-	PIXPACK(0x8594AD), PIXPACK(0x262F47), PIXPACK(0xA9AEBC), PIXPACK(0xC2E1F7),
+static const RGB<uint8_t> SLCN_COLOUR[16] = {
+	0x5A6679_rgb, 0x6878A1_rgb, 0xABBFDD_rgb, 0x838490_rgb,
+	0xBCCDDF_rgb, 0x82A0D2_rgb, 0x5B6680_rgb, 0x232C3B_rgb,
+	0x485067_rgb, 0x8B9AB6_rgb, 0xADB1C1_rgb, 0xC3C6D1_rgb,
+	0x8594AD_rgb, 0x262F47_rgb, 0xA9AEBC_rgb, 0xC2E1F7_rgb,
 };
 
-static void initSparkles(Particle &part)
+static void initSparkles(Simulation *sim, Particle &part)
 {
 	// bits 31-20: phase increment (randomised to a value between 1 and 9)
 	// bits 19-16: next colour index
 	// bits 15-12: current colour index
 	// bits 11-00: phase
-	part.tmp = RNG::Ref().between(0x100000, 0x9FFFFF);
+	part.tmp = sim->rng.between(0x100000, 0x9FFFFF);
 }
 
 static int update(UPDATE_FUNC_ARGS)
 {
 	if (!parts[i].tmp)
 	{
-		initSparkles(parts[i]);
+		initSparkles(sim, parts[i]);
 	}
 	int phase = (parts[i].tmp & 0xFFF) + ((parts[i].tmp >> 20) & 0xFFF);
 	if (phase & 0x1000)
 	{
 		// discard current, current <- next, next <- random, wrap phase
-		parts[i].tmp = (parts[i].tmp & 0xFFF00000) | (phase & 0xFFF) | (RNG::Ref().between(0, 15) << 16) | ((parts[i].tmp >> 4) & 0xF000);
+		parts[i].tmp = (parts[i].tmp & 0xFFF00000) | (phase & 0xFFF) | (sim->rng.between(0, 15) << 16) | ((parts[i].tmp >> 4) & 0xF000);
 	}
 	else
 	{
@@ -108,19 +108,19 @@ static int update(UPDATE_FUNC_ARGS)
 
 static int graphics(GRAPHICS_FUNC_ARGS)
 {
-	int curr_colour = SLCN_COLOUR[(cpart->tmp >> 12) & 15];
+	RGB<uint8_t> curr_colour = SLCN_COLOUR[(cpart->tmp >> 12) & 15];
 	if (cpart->tmp & 0x800) // mix with next colour if phase is at least halfway there
 	{
-		int next_colour = SLCN_COLOUR[(cpart->tmp >> 16) & 15];
-		curr_colour = PIXRGB(
-			(PIXR(curr_colour) + PIXR(next_colour)) / 2,
-			(PIXG(curr_colour) + PIXG(next_colour)) / 2,
-			(PIXB(curr_colour) + PIXB(next_colour)) / 2
+		RGB<uint8_t> next_colour = SLCN_COLOUR[(cpart->tmp >> 16) & 15];
+		curr_colour = RGB<uint8_t>(
+			(curr_colour.Red   + next_colour.Red) / 2,
+			(curr_colour.Green + next_colour.Green) / 2,
+			(curr_colour.Blue  + next_colour.Blue) / 2
 		);
 	}
-	*colr = PIXR(curr_colour);
-	*colg = PIXG(curr_colour);
-	*colb = PIXB(curr_colour);
+	*colr = curr_colour.Red;
+	*colg = curr_colour.Green;
+	*colb = curr_colour.Blue;
 
 	int rnd = (cpart->tmp & 0xFFFF) * ((cpart->tmp >> 16) & 0xFFFF);
 	if (!(rnd % 887))
@@ -137,5 +137,5 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	initSparkles(sim->parts[i]);
+	initSparkles(sim, sim->parts[i]);
 }

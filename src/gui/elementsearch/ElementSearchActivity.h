@@ -1,10 +1,8 @@
-#ifndef ELEMENTSEARCHACTIVITY_H_
-#define ELEMENTSEARCHACTIVITY_H_
-
-#include <vector>
+#pragma once
 #include "Activity.h"
 #include "common/String.h"
 #include "gui/interface/Point.h"
+#include <vector>
 
 class Tool;
 class ToolButton;
@@ -12,6 +10,7 @@ class GameController;
 
 namespace ui
 {
+	class ScrollPanel;
 	class Textbox;
 }
 
@@ -22,6 +21,7 @@ class ElementSearchActivity: public WindowActivity
 	std::vector<Tool*> tools;
 	ui::Textbox * searchField;
 	std::vector<ToolButton*> toolButtons;
+	ui::ScrollPanel *scrollPanel = nullptr;
 	String toolTip;
 	int toolTipPresence;
 	bool shiftPressed;
@@ -42,5 +42,3 @@ public:
 	void OnDraw() override;
 	void ToolTip(ui::Point senderPosition, String ToolTip) override;
 };
-
-#endif /* ELEMENTSEARCHACTIVITY_H_ */

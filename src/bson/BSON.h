@@ -18,22 +18,17 @@
  *    limitations under the License.
  */
 
-#ifndef _BSON_H_
-#define _BSON_H_
-#include "Config.h"
-
+#pragma once
 #include <ctime>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
 #include <climits>
-#include "common/tpt-inline.h"
-
 #include <cstdint>
 
-#define BSON_OK 0
-#define BSON_ERROR -1
+constexpr int BSON_OK = 0;
+constexpr int BSON_ERROR = -1;
 
 static const char bson_numstrs[1000][4] = {
 	"0",  "1",  "2",  "3",  "4",  "5",  "6",  "7",  "8",  "9",
@@ -1187,7 +1182,7 @@ bson_bool_t bson_check_string( bson *b, const char *string,
 #define bson_big_endian32(out, in) ( bson_swap_endian32(out, in) )
 //#endif
 
-static TPT_INLINE void bson_swap_endian64( void *outp, const void *inp ) {
+static inline void bson_swap_endian64( void *outp, const void *inp ) {
 	const char *in = ( const char * )inp;
 	char *out = ( char * )outp;
 
@@ -1201,7 +1196,7 @@ static TPT_INLINE void bson_swap_endian64( void *outp, const void *inp ) {
 	out[7] = in[0];
 
 }
-static TPT_INLINE void bson_swap_endian32( void *outp, const void *inp ) {
+static inline void bson_swap_endian32( void *outp, const void *inp ) {
 	const char *in = ( const char * )inp;
 	char *out = ( char * )outp;
 
@@ -1210,5 +1205,3 @@ static TPT_INLINE void bson_swap_endian32( void *outp, const void *inp ) {
 	out[2] = in[1];
 	out[3] = in[0];
 }
-
-#endif

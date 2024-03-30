@@ -4,7 +4,7 @@ void Element::Element_METL()
 {
 	Identifier = "DEFAULT_PT_METL";
 	Name = "METL";
-	Colour = PIXPACK(0x404060);
+	Colour = 0x404060_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_ELEC;
 	Enabled = 1;
@@ -27,6 +27,7 @@ void Element::Element_METL()
 	Weight = 100;
 
 	HeatConduct = 251;
+	LatentHeat = 919;
 	Description = "The basic conductor. Meltable.";
 
 	Properties = TYPE_SOLID|PROP_CONDUCTS|PROP_LIFE_DEC|PROP_HOT_GLOW;

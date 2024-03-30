@@ -8,7 +8,7 @@ void Element::Element_PTNM()
 {
 	Identifier = "DEFAULT_PT_PTNM";
 	Name = "PTNM";
-	Colour = PIXPACK(0xD5E0EB);
+	Colour = 0xD5E0EB_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -54,7 +54,7 @@ static void wtrv_reactions(int wtrv1_id, UPDATE_FUNC_ARGS)
 	{
 		for (int ry = -1; ry <= 1; ry++)
 		{
-			if (BOUNDS_CHECK && (rx || ry))
+			if (rx || ry)
 			{
 				int r = pmap[y + ry][x + rx];
 				if (!r || ID(r) == wtrv1_id)
@@ -79,7 +79,7 @@ static void hygn_reactions(int hygn1_id, UPDATE_FUNC_ARGS)
 	{
 		for (int ry = -1; ry <= 1; ry++)
 		{
-			if (BOUNDS_CHECK && (rx || ry))
+			if (rx || ry)
 			{
 				int r = pmap[y + ry][x + rx];
 				if (!r || ID(r) == hygn1_id)
@@ -109,7 +109,7 @@ static void hygn_reactions(int hygn1_id, UPDATE_FUNC_ARGS)
 				}
 
 				// Cold fusion: 2 hydrogen > 500 C has a chance to fuse
-				if (rt == PT_H2 && RNG::Ref().chance(1, 1000) && parts[ID(r)].temp > 500.0f + 273.15f && parts[hygn1_id].temp > 500.0f + 273.15f)
+				if (rt == PT_H2 && sim->rng.chance(1, 1000) && parts[ID(r)].temp > 500.0f + 273.15f && parts[hygn1_id].temp > 500.0f + 273.15f)
 				{
 					sim->part_change_type(ID(r), x + rx, y + ry, PT_NBLE);
 					sim->part_change_type(hygn1_id, (int)(parts[hygn1_id].x + 0.5f), (int)(parts[hygn1_id].y + 0.5f), PT_NEUT);
@@ -125,7 +125,7 @@ static void hygn_reactions(int hygn1_id, UPDATE_FUNC_ARGS)
 						parts[j].temp = parts[ID(r)].temp;
 						parts[j].tmp = 0x1;
 					}
-					if (RNG::Ref().chance(1, 10))
+					if (sim->rng.chance(1, 10))
 					{
 						int j = sim->create_part(-3, x + rx, y + ry, PT_ELEC);
 						if (j > -1)
@@ -167,7 +167,7 @@ static int update(UPDATE_FUNC_ARGS)
 	{
 		for (int ry = -1; ry <= 1; ry++)
 		{
-			if (BOUNDS_CHECK && (rx || ry))
+			if (rx || ry)
 			{
 				int r = pmap[y + ry][x + rx];
 				if (!r)
@@ -212,7 +212,7 @@ static int update(UPDATE_FUNC_ARGS)
 				float prob = std::min(1.0f, parts[i].temp / (273.15f + 1500.0f));
 				prob *= prob;
 
-				if (RNG::Ref().uniform01() <= prob)
+				if (sim->rng.uniform01() <= prob)
 				{
 					switch (rt)
 					{
@@ -235,6 +235,10 @@ static int update(UPDATE_FUNC_ARGS)
 
 					case PT_SMKE: // SMKE -> CO2
 						sim->part_change_type(ID(r), x + rx, y + ry, PT_CO2);
+						break;
+
+					case PT_RSST: // RSST -> BIZR
+						sim->part_change_type(ID(r), x + rx, y + ry, PT_BIZR);
 						break;
 					}
 				}
@@ -266,6 +270,6 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	if (RNG::Ref().chance(1, 15))
+	if (sim->rng.chance(1, 15))
 		sim->parts[i].tmp = 1;
 }

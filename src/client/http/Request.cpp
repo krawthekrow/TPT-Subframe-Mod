@@ -1,410 +1,158 @@
 #include "Request.h"
-
-#include "RequestManager.h"
-
-#ifndef NOHTTP
-void SetupCurlEasyCiphers(CURL *easy)
-{
-#ifdef SECURE_CIPHERS_ONLY
-	curl_version_info_data *version_info = curl_version_info(CURLVERSION_NOW);
-	ByteString ssl_type = version_info->ssl_version;
-	if (ssl_type.Contains("OpenSSL"))
-	{
-		curl_easy_setopt(easy, CURLOPT_SSL_CIPHER_LIST, "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES128-GCM-SHA256");
-#ifdef REQUEST_USE_CURL_TLSV13CL
-		curl_easy_setopt(easy, CURLOPT_TLS13_CIPHERS, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_8_SHA256:TLS_AES_128_CCM_SHA256");
-#endif
-	}
-	else if (ssl_type.Contains("Schannel"))
-	{
-		// TODO: add more cipher algorithms
-		curl_easy_setopt(easy, CURLOPT_SSL_CIPHER_LIST, "CALG_ECDH_EPHEM");
-	}
-#endif
-	// TODO: Find out what TLS1.2 is supported on, might need to also allow TLS1.0
-	curl_easy_setopt(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-#if defined(CURL_AT_LEAST_VERSION) && CURL_AT_LEAST_VERSION(7, 70, 0)
-	curl_easy_setopt(easy, CURLOPT_SSL_OPTIONS, CURLSSLOPT_REVOKE_BEST_EFFORT);
-#elif defined(CURL_AT_LEAST_VERSION) && CURL_AT_LEAST_VERSION(7, 44, 0)
-	curl_easy_setopt(easy, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NO_REVOKE);
-#elif defined(WIN)
-# error "That's unfortunate."
-#endif
-}
-#endif
+#include "requestmanager/RequestManager.h"
+#include <memory>
+#include <iostream>
+#include <cstring>
+#include <json/json.h>
 
 namespace http
 {
-#ifndef NOHTTP
-	Request::Request(ByteString uri_):
-		uri(uri_),
-		rm_total(0),
-		rm_done(0),
-		rm_finished(false),
-		rm_canceled(false),
-		rm_started(false),
-		added_to_multi(false),
-		status(0),
-		headers(NULL),
-#ifdef REQUEST_USE_CURL_MIMEPOST
-		post_fields(NULL)
-#else
-		post_fields_first(NULL),
-		post_fields_last(NULL)
-#endif
+	Request::Request(ByteString newUri)
 	{
-		easy = curl_easy_init();
-		if (!RequestManager::Ref().AddRequest(this))
-		{
-			status = 604;
-			rm_finished = true;
-		}
+		handle = RequestHandle::Create();
+		handle->uri = newUri;
 	}
-#else
-	Request::Request(ByteString uri_) {}
-#endif
 
 	Request::~Request()
 	{
-#ifndef NOHTTP
-		curl_easy_cleanup(easy);
-#ifdef REQUEST_USE_CURL_MIMEPOST
-		curl_mime_free(post_fields);
-#else
-		curl_formfree(post_fields_first);
-#endif
-		curl_slist_free_all(headers);
-#endif
+		bool tryUnregister;
+		{
+			std::lock_guard lk(handle->stateMx);
+			tryUnregister = handle->state == RequestHandle::running;
+		}
+		if (tryUnregister)
+		{
+			// At this point it may have already finished and been unregistered but that's ok,
+			// attempting to unregister a request multiple times is allowed. We only do the
+			// state-checking dance so we don't wake up RequestManager if we don't have to.
+			// In fact, we could just not unregister requests here at all, they'd just run to
+			// completion and be unregistered later. All this does is cancel them early.
+			RequestManager::Ref().UnregisterRequest(*this);
+		}
+	}
+
+	void Request::FailEarly(ByteString error)
+	{
+		assert(handle->state == RequestHandle::ready);
+		handle->failEarly = error;
 	}
 
 	void Request::Verb(ByteString newVerb)
 	{
-#ifndef NOHTTP
-		verb = newVerb;
-#endif
+		assert(handle->state == RequestHandle::ready);
+		handle->verb = newVerb;
 	}
 
-	void Request::AddHeader(ByteString header)
+	void Request::AddHeader(Header header)
 	{
-#ifndef NOHTTP
-		headers = curl_slist_append(headers, header.c_str());
-#endif
+		assert(handle->state == RequestHandle::ready);
+		handle->headers.push_back(header);
 	}
 
-	// add post data to a request
-	void Request::AddPostData(std::map<ByteString, ByteString> data)
+	void Request::AddPostData(PostData data)
 	{
-#ifndef NOHTTP
+		assert(handle->state == RequestHandle::ready);
 		// Even if the map is empty, calling this function signifies you want to do a POST request
-		isPost = true;
-		if (!data.size())
-		{
-			return;
-		}
-
-		if (easy)
-		{
-#ifdef REQUEST_USE_CURL_MIMEPOST
-			if (!post_fields)
-			{
-				post_fields = curl_mime_init(easy);
-			}
-
-			for (auto &field : data)
-			{
-				curl_mimepart *part = curl_mime_addpart(post_fields);
-				curl_mime_data(part, &field.second[0], field.second.size());
-				if (auto split = field.first.SplitBy(':'))
-				{
-					curl_mime_name(part, split.Before().c_str());
-					curl_mime_filename(part, split.After().c_str());
-				}
-				else
-				{
-					curl_mime_name(part, field.first.c_str());
-				}
-			}
-#else
-			post_fields_map.insert(data.begin(), data.end());
-#endif
-		}
-#endif
+		handle->isPost = true;
+		handle->postData = data;
 	}
 
-	// add userID and sessionID headers to the request
 	void Request::AuthHeaders(ByteString ID, ByteString session)
 	{
-		if (ID.size())
+		assert(handle->state == RequestHandle::ready);
+		if (ID.size() && ID != "-1") // -1 is an emscripten hack, see AuthUserEmscripten.cpp
 		{
 			if (session.size())
 			{
-				AddHeader("X-Auth-User-Id: " + ID);
-				AddHeader("X-Auth-Session-Key: " + session);
+				AddHeader({ "X-Auth-User-Id", ID });
+				AddHeader({ "X-Auth-Session-Key", session });
 			}
 			else
 			{
-				AddHeader("X-Auth-User: " + ID);
+				AddHeader({ "X-Auth-User", ID });
 			}
 		}
 	}
 
-#ifndef NOHTTP
-	size_t Request::HeaderDataHandler(char *ptr, size_t size, size_t count, void *userdata)
-	{
-		Request *req = (Request *)userdata;
-		auto actual_size = size * count;
-		if (actual_size >= 2 && ptr[actual_size - 2] == '\r' && ptr[actual_size - 1] == '\n')
-		{
-			if (actual_size > 2) // don't include header list terminator (but include the status line)
-			{
-				req->response_headers.push_back(ByteString(ptr, ptr + actual_size - 2));
-			}
-			return actual_size;
-		}
-		return 0;
-	}
-
-	size_t Request::WriteDataHandler(char *ptr, size_t size, size_t count, void *userdata)
-	{
-		Request *req = (Request *)userdata;
-		auto actual_size = size * count;
-		req->response_body.append(ptr, actual_size);
-		return actual_size;
-	}
-#endif
-
-	// start the request thread
 	void Request::Start()
 	{
-#ifndef NOHTTP
-		if (CheckStarted() || CheckDone())
-		{
-			return;
-		}
-
-		if (easy)
-		{
-#ifdef REQUEST_USE_CURL_MIMEPOST
-			if (post_fields)
-			{
-				curl_easy_setopt(easy, CURLOPT_MIMEPOST, post_fields);
-			}
-#else
-			if (!post_fields_map.empty())
-			{
-				for (auto &field : post_fields_map)
-				{
-					if (auto split = field.first.SplitBy(':'))
-					{
-						curl_formadd(&post_fields_first, &post_fields_last,
-							CURLFORM_COPYNAME, split.Before().c_str(),
-							CURLFORM_BUFFER, split.After().c_str(),
-							CURLFORM_BUFFERPTR, &field.second[0],
-							CURLFORM_BUFFERLENGTH, field.second.size(),
-						CURLFORM_END);
-					}
-					else
-					{
-						curl_formadd(&post_fields_first, &post_fields_last,
-							CURLFORM_COPYNAME, field.first.c_str(),
-							CURLFORM_PTRCONTENTS, &field.second[0],
-							CURLFORM_CONTENTLEN, field.second.size(),
-						CURLFORM_END);
-					}
-				}
-				curl_easy_setopt(easy, CURLOPT_HTTPPOST, post_fields_first);
-			}
-#endif
-			else if (isPost)
-			{
-				curl_easy_setopt(easy, CURLOPT_POST, 1L);
-				curl_easy_setopt(easy, CURLOPT_POSTFIELDS, "");
-			}
-			else
-			{
-				curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
-			}
-			if (verb.size())
-			{
-				curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, verb.c_str());
-			}
-
-			curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 1L);
-#if defined(CURL_AT_LEAST_VERSION) && CURL_AT_LEAST_VERSION(7, 85, 0)
-# ifdef ENFORCE_HTTPS
-			curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "https");
-			curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS_STR, "https");
-# else
-			curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "https,http");
-			curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS_STR, "https,http");
-# endif
-#else
-# ifdef ENFORCE_HTTPS
-			curl_easy_setopt(easy, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
-			curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
-# else
-			curl_easy_setopt(easy, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS | CURLPROTO_HTTP);
-			curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS | CURLPROTO_HTTP);
-# endif
-#endif
-
-			SetupCurlEasyCiphers(easy);
-
-			curl_easy_setopt(easy, CURLOPT_MAXREDIRS, 10L);
-
-			curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, error_buffer);
-			error_buffer[0] = 0;
-
-			curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, timeout);
-			curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);
-			curl_easy_setopt(easy, CURLOPT_URL, uri.c_str());
-
-			if (proxy.size())
-			{
-				curl_easy_setopt(easy, CURLOPT_PROXY, proxy.c_str());
-			}
-			if (cafile.size())
-			{
-				curl_easy_setopt(easy, CURLOPT_CAINFO, cafile.c_str());
-			}
-			if (capath.size())
-			{
-				curl_easy_setopt(easy, CURLOPT_CAPATH, capath.c_str());
-			}
-
-			curl_easy_setopt(easy, CURLOPT_PRIVATE, (void *)this);
-			curl_easy_setopt(easy, CURLOPT_USERAGENT, user_agent.c_str());
-
-			curl_easy_setopt(easy, CURLOPT_HEADERDATA, (void *)this);
-			curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, Request::HeaderDataHandler);
-
-			curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *)this);
-			curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, Request::WriteDataHandler);
-		}
-
-		{
-			std::lock_guard<std::mutex> g(rm_mutex);
-			rm_started = true;
-		}
-		RequestManager::Ref().StartRequest(this);
-#endif
+		assert(handle->state == RequestHandle::ready);
+		handle->state = RequestHandle::running;
+		RequestManager::Ref().RegisterRequest(*this);
 	}
 
-
-	// finish the request (if called before the request is done, this will block)
-	ByteString Request::Finish(int *status_out, std::vector<ByteString> *headers_out)
+	bool Request::CheckDone() const
 	{
-#ifndef NOHTTP
-		if (CheckCanceled())
+		std::lock_guard lk(handle->stateMx);
+		assert(handle->state == RequestHandle::running || handle->state == RequestHandle::done);
+		return handle->state == RequestHandle::done;
+	}
+
+	std::pair<int64_t, int64_t> Request::CheckProgress() const
+	{
+		std::lock_guard lk(handle->stateMx);
+		assert(handle->state == RequestHandle::running || handle->state == RequestHandle::done);
+		return { handle->bytesTotal, handle->bytesDone };
+	}
+
+	const std::vector<Header> &Request::ResponseHeaders() const
+	{
+		std::lock_guard lk(handle->stateMx);
+		assert(handle->state == RequestHandle::done);
+		return handle->responseHeaders;
+	}
+
+	void Request::Wait()
+	{
+		std::unique_lock lk(handle->stateMx);
+		assert(handle->state == RequestHandle::running);
+		handle->stateCv.wait(lk, [this]() {
+			return handle->state == RequestHandle::done;
+		});
+	}
+
+	int Request::StatusCode() const
+	{
 		{
-			return ""; // shouldn't happen but just in case
+			std::unique_lock lk(handle->stateMx);
+			assert(handle->state == RequestHandle::done);
 		}
-		
-		ByteString response_out;
+		return handle->statusCode;
+	}
+
+	std::pair<int, ByteString> Request::Finish()
+	{
 		{
-			std::unique_lock<std::mutex> l(rm_mutex);
-			done_cv.wait(l, [this]() { return rm_finished; });
-			rm_started = false;
-			rm_canceled = true;
-			if (status_out)
-			{
-				*status_out = status;
-			}
-			if (headers_out)
-			{
-				*headers_out = std::move(response_headers);
-			}
-			response_out = std::move(response_body);
+			std::unique_lock lk(handle->stateMx);
+			assert(handle->state == RequestHandle::done);
 		}
-
-		RequestManager::Ref().RemoveRequest(this);
-		return response_out;
-#else
-		if (status_out)
-			*status_out = 604;
-		return "";
-#endif
-	}
-
-	void Request::CheckProgress(int *total, int *done)
-	{
-#ifndef NOHTTP
-		std::lock_guard<std::mutex> g(rm_mutex);
-		if (total)
+		handle->state = RequestHandle::dead;
+		if (handle->error)
 		{
-			*total = rm_total;
+			throw RequestError(*handle->error);
 		}
-		if (done)
+		return std::pair{ handle->statusCode, std::move(handle->responseData) };
+	}
+
+	void RequestHandle::MarkDone()
+	{
 		{
-			*done = rm_done;
+			std::lock_guard lk(stateMx);
+			assert(state == RequestHandle::running);
+			state = RequestHandle::done;
 		}
-#endif
-	}
-
-	// returns true if the request has finished
-	bool Request::CheckDone()
-	{
-#ifndef NOHTTP
-		std::lock_guard<std::mutex> g(rm_mutex);
-		return rm_finished;
-#else
-		return true;
-#endif
-	}
-
-	// returns true if the request was canceled
-	bool Request::CheckCanceled()
-	{
-#ifndef NOHTTP
-		std::lock_guard<std::mutex> g(rm_mutex);
-		return rm_canceled;
-#else
-		return false;
-#endif
-	}
-
-	// returns true if the request is running
-	bool Request::CheckStarted()
-	{
-#ifndef NOHTTP
-		std::lock_guard<std::mutex> g(rm_mutex);
-		return rm_started;
-#else
-		return true;
-#endif
-
-	}
-
-	// cancels the request, the request thread will delete the Request* when it finishes (do not use Request in any way after canceling)
-	void Request::Cancel()
-	{
-#ifndef NOHTTP
+		stateCv.notify_one();
+		if (error)
 		{
-			std::lock_guard<std::mutex> g(rm_mutex);
-			rm_canceled = true;
+			std::cerr << *error << std::endl;
 		}
-		RequestManager::Ref().RemoveRequest(this);
-#endif
-	}
-
-	ByteString Request::Simple(ByteString uri, int *status, std::map<ByteString, ByteString> post_data)
-	{
-		return SimpleAuth(uri, status, "", "", post_data);
-	}
-
-	ByteString Request::SimpleAuth(ByteString uri, int *status, ByteString ID, ByteString session, std::map<ByteString, ByteString> post_data)
-	{
-		Request *request = new Request(uri);
-		if (!post_data.empty())
+		else if (statusCode >= 400)
 		{
-			request->AddPostData(post_data);
+			std::cerr << "status code " << statusCode << " for request to " << uri << std::endl;
 		}
-		request->AuthHeaders(ID, session);
-		request->Start();
-		return request->Finish(status);
 	}
 
-	String StatusText(int ret)
+	const char *StatusText(int ret)
 	{
 		switch (ret)
 		{
@@ -475,7 +223,6 @@ namespace http
 		case 607: return "Connection Refused";
 		case 608: return "Proxy Server Not Found";
 		case 609: return "SSL: Invalid Certificate Status";
-		case 610: return "Cancelled by Shutdown";
 		case 611: return "Too Many Redirects";
 		case 612: return "SSL: Connect Error";
 		case 613: return "SSL: Crypto Engine Not Found";
@@ -487,8 +234,69 @@ namespace http
 		case 619: return "SSL: Failed to Load CRL File";
 		case 620: return "SSL: Issuer Check Failed";
 		case 621: return "SSL: Pinned Public Key Mismatch";
-		default:  return "Unknown Status Code";
+		}
+		return "Unknown Status Code";
+	}
+
+	void Request::ParseResponse(const ByteString &result, int status, ResponseType responseType)
+	{
+		// no server response, return "Malformed Response"
+		if (status == 200 && !result.size())
+		{
+			status = 603;
+		}
+		if (status == 302)
+		{
+			return;
+		}
+		if (status != 200)
+		{
+			throw RequestError(ByteString::Build("HTTP Error ", status, ": ", http::StatusText(status)));
+		}
+
+		switch (responseType)
+		{
+		case responseOk:
+			if (strncmp(result.c_str(), "OK", 2))
+			{
+				throw RequestError(result);
+			}
+			break;
+
+		case responseJson:
+			{
+				std::istringstream ss(result);
+				Json::Value root;
+				try
+				{
+					ss >> root;
+					// assume everything is fine if an empty [] is returned
+					if (root.size() == 0)
+					{
+						return;
+					}
+					int status = root.get("Status", 1).asInt();
+					if (status != 1)
+					{
+						throw RequestError(ByteString(root.get("Error", "Unspecified Error").asString()));
+					}
+				}
+				catch (const std::exception &ex)
+				{
+					// sometimes the server returns a 200 with the text "Error: 401"
+					if (!strncmp(result.c_str(), "Error: ", 7))
+					{
+						status = ByteString(result.begin() + 7, result.end()).ToNumber<int>();
+						throw RequestError(ByteString::Build("HTTP Error ", status, ": ", http::StatusText(status)));
+					}
+					throw RequestError("Could not read response: " + ByteString(ex.what()));
+				}
+			}
+			break;
+
+		case responseData:
+			// no further processing required
+			break;
 		}
 	}
 }
-

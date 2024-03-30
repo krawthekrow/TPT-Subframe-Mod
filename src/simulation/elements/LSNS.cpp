@@ -6,7 +6,7 @@ void Element::Element_LSNS()
 {
 	Identifier = "DEFAULT_PT_LSNS";
 	Name = "LSNS";
-	Colour = PIXPACK(0x336699);
+	Colour = 0x336699_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SENSOR;
 	Enabled = 1;
@@ -50,14 +50,18 @@ void Element::Element_LSNS()
 
 static int update(UPDATE_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	int rd = parts[i].tmp2;
 	if (rd > 25) parts[i].tmp2 = rd = 25;
 	if (parts[i].life)
 	{
 		parts[i].life = 0;
 		for (int rx = -2; rx <= 2; rx++)
+		{
 			for (int ry = -2; ry <= 2; ry++)
-				if (BOUNDS_CHECK && (rx || ry))
+			{
+				if (rx || ry)
 				{
 					int r = pmap[y + ry][x + rx];
 					if (!r)
@@ -65,9 +69,10 @@ static int update(UPDATE_FUNC_ARGS)
 					if (!r)
 						continue;
 					int rt = TYP(r);
-					if (sim->parts_avg(i, ID(r), PT_INSL) != PT_INSL)
+					auto pavg = sim->parts_avg(i, ID(r), PT_INSL);
+					if (pavg != PT_INSL && pavg != PT_RSSS)
 					{
-						if ((sim->elements[rt].Properties&PROP_CONDUCTS) && !(rt == PT_WATR || rt == PT_SLTW || rt == PT_NTCT || rt == PT_PTCT || rt == PT_INWR) && parts[ID(r)].life == 0)
+						if ((elements[rt].Properties&PROP_CONDUCTS) && !(rt == PT_WATR || rt == PT_SLTW || rt == PT_NTCT || rt == PT_PTCT || rt == PT_INWR) && parts[ID(r)].life == 0)
 						{
 							sim->debug_interestingChangeOccurred = true;
 							parts[ID(r)].life = 4;
@@ -75,14 +80,17 @@ static int update(UPDATE_FUNC_ARGS)
 							sim->part_change_type(ID(r), x + rx, y + ry, PT_SPRK);
 						}
 					}
-
 				}
+			}
+		}
 	}
 	bool doSerialization = false;
 	bool doDeserialization = false;
 	int life = 0;
 	for (int rx = -rd; rx < rd + 1; rx++)
+	{
 		for (int ry = -rd; ry < rd + 1; ry++)
+		{
 			if (x + rx >= 0 && y + ry >= 0 && x + rx < XRES && y + ry < YRES && (rx || ry))
 			{
 				int r = pmap[y + ry][x + rx];
@@ -121,10 +129,14 @@ static int update(UPDATE_FUNC_ARGS)
 					break;
 				}
 			}
+		}
+	}
 
 	for (int rx = -1; rx <= 1; rx++)
+	{
 		for (int ry = -1; ry <= 1; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+		{
+			if (rx || ry)
 			{
 				int r = pmap[y + ry][x + rx];
 				if (!r)
@@ -154,6 +166,8 @@ static int update(UPDATE_FUNC_ARGS)
 						parts[ID(r)].life = life - 0x10000000;
 				}
 			}
+		}
+	}
 
 	return 0;
 }

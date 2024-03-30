@@ -1,9 +1,6 @@
-#ifndef GETUSERINFOREQUEST2_H
-#define GETUSERINFOREQUEST2_H
-
+#pragma once
 #include "APIRequest.h"
-
-class UserInfo;
+#include "client/UserInfo.h"
 
 namespace http
 {
@@ -11,11 +8,7 @@ namespace http
 	{
 	public:
 		GetUserInfoRequest(ByteString username);
-		virtual ~GetUserInfoRequest();
 
-		std::unique_ptr<UserInfo> Finish();
+		UserInfo Finish();
 	};
 }
-
-#endif // GETUSERINFOREQUEST2_H
-

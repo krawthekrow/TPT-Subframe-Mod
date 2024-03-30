@@ -8,7 +8,7 @@ void Element::Element_CRMC()
 {
 	Identifier = "DEFAULT_PT_CRMC";
 	Name = "CRMC";
-	Colour = PIXPACK(0xD6D1D4);
+	Colour = 0xD6D1D4_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -67,5 +67,5 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	sim->parts[i].tmp2 = RNG::Ref().between(0, 4);
+	sim->parts[i].tmp2 = sim->rng.between(0, 4);
 }

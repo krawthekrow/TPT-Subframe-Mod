@@ -7,7 +7,7 @@ void Element::Element_GEL()
 {
 	Identifier = "DEFAULT_PT_GEL";
 	Name = "GEL";
-	Colour = PIXPACK(0xFF9900);
+	Colour = 0xFF9900_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_LIQUID;
 	Enabled = 1;
@@ -50,53 +50,55 @@ void Element::Element_GEL()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rt;
-	bool gel;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	if (parts[i].tmp > 100)
 		parts[i].tmp = 100;
 	if (parts[i].tmp < 0)
 		parts[i].tmp = 0;
 	int absorbChanceDenom = parts[i].tmp * 10 + 500;
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				gel=false;
-				r = pmap[y+ry][x+rx];
+				auto gel=false;
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				rt = TYP(r);
+				auto rt = TYP(r);
 				//Desaturation
 				switch (rt)
 				{
 				case PT_WATR:
 				case PT_DSTW:
 				case PT_FRZW:
-					if (parts[i].tmp<100 && RNG::Ref().chance(500, absorbChanceDenom))
+					if (parts[i].tmp<100 && sim->rng.chance(500, absorbChanceDenom))
 					{
 						parts[i].tmp++;
 						sim->kill_part(ID(r));
 					}
 					break;
 				case PT_PSTE:
-					if (parts[i].tmp<100 && RNG::Ref().chance(20, absorbChanceDenom))
+					if (parts[i].tmp<100 && sim->rng.chance(20, absorbChanceDenom))
 					{
 						parts[i].tmp++;
 						sim->create_part(ID(r), x+rx, y+ry, PT_CLST);
 					}
 					break;
 				case PT_SLTW:
-					if (parts[i].tmp<100 && RNG::Ref().chance(50, absorbChanceDenom))
+					if (parts[i].tmp<100 && sim->rng.chance(50, absorbChanceDenom))
 					{
 						parts[i].tmp++;
-						if (RNG::Ref().chance(3, 4))
+						if (sim->rng.chance(3, 4))
 							sim->kill_part(ID(r));
 						else
 							sim->part_change_type(ID(r), x+rx, y+ry, PT_SALT);
 					}
 					break;
 				case PT_CBNW:
-					if (parts[i].tmp < 100 && RNG::Ref().chance(100, absorbChanceDenom))
+					if (parts[i].tmp < 100 && sim->rng.chance(100, absorbChanceDenom))
 					{
 						parts[i].tmp++;
 						sim->part_change_type(ID(r), x+rx, y+ry, PT_CO2);
@@ -133,23 +135,25 @@ static int update(UPDATE_FUNC_ARGS)
 				dy = parts[i].y - parts[ID(r)].y;
 
 				//Stickiness
-				if ((dx*dx + dy*dy)>1.5 && (gel || !sim->elements[rt].Falldown || (fabs((float)rx)<2 && fabs((float)ry)<2)))
+				if ((dx*dx + dy*dy)>1.5 && (gel || !elements[rt].Falldown || (fabs((float)rx)<2 && fabs((float)ry)<2)))
 				{
 					float per, nd;
 					nd = dx*dx + dy*dy - 0.5;
 					per = 5*(1 - parts[i].tmp/100)*(nd/(dx*dx + dy*dy + nd) - 0.5);
-					if (sim->elements[rt].Properties&TYPE_LIQUID)
+					if (elements[rt].Properties&TYPE_LIQUID)
 						per *= 0.1f;
 					dx *= per; dy *= per;
 					parts[i].vx += dx;
 					parts[i].vy += dy;
-					if ((sim->elements[rt].Properties&TYPE_PART) || rt==PT_GOO)
+					if ((elements[rt].Properties&TYPE_PART) || rt==PT_GOO)
 					{
 						parts[ID(r)].vx -= dx;
 						parts[ID(r)].vy -= dy;
 					}
 				}
 			}
+		}
+	}
 	return 0;
 }
 

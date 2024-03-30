@@ -6,7 +6,7 @@ void Element::Element_H2()
 {
 	Identifier = "DEFAULT_PT_H2";
 	Name = "HYGN";
-	Colour = PIXPACK(0x5070FF);
+	Colour = 0x5070FF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_GAS;
 	Enabled = 1;
@@ -47,15 +47,18 @@ void Element::Element_H2()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int r,rx,ry,rt;
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	auto &sd = SimulationData::CRef();
+	auto &can_move = sd.can_move;
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				rt = TYP(r);
+				auto rt = TYP(r);
 				if (sim->pv[y/CELL][x/CELL] > 8.0f && rt == PT_DESL) // This will not work. DESL turns to fire above 5.0 pressure
 				{
 					sim->part_change_type(ID(r),x+rx,y+ry,PT_WATR);
@@ -77,22 +80,24 @@ static int update(UPDATE_FUNC_ARGS)
 							parts[ID(r)].temp=2473.15f;
 						parts[ID(r)].tmp |= 1;
 						sim->create_part(i,x,y,PT_FIRE);
-						parts[i].temp += RNG::Ref().between(0, 99);
+						parts[i].temp += sim->rng.between(0, 99);
 						parts[i].tmp |= 1;
 						return 1;
 					}
 					else if ((rt==PT_PLSM && !(parts[ID(r)].tmp&4)) || (rt==PT_LAVA && parts[ID(r)].ctype != PT_BMTL))
 					{
 						sim->create_part(i,x,y,PT_FIRE);
-						parts[i].temp += RNG::Ref().between(0, 99);
+						parts[i].temp += sim->rng.between(0, 99);
 						parts[i].tmp |= 1;
 						return 1;
 					}
 				}
 			}
+		}
+	}
 	if (parts[i].temp > 2273.15 && sim->pv[y/CELL][x/CELL] > 50.0f)
 	{
-		if (RNG::Ref().chance(1, 5))
+		if (sim->rng.chance(1, 5))
 		{
 			int j;
 			float temp = parts[i].temp;
@@ -102,7 +107,7 @@ static int update(UPDATE_FUNC_ARGS)
 			j = sim->create_part(-3,x,y,PT_NEUT);
 			if (j>-1)
 				parts[j].temp = temp;
-			if (RNG::Ref().chance(1, 10))
+			if (sim->rng.chance(1, 10))
 			{
 				j = sim->create_part(-3,x,y,PT_ELEC);
 				if (j>-1)
@@ -115,8 +120,8 @@ static int update(UPDATE_FUNC_ARGS)
 				parts[j].temp = temp;
 				parts[j].tmp = 0x1;
 			}
-			rx = x + RNG::Ref().between(-1, 1), ry = y + RNG::Ref().between(-1, 1), rt = TYP(pmap[ry][rx]);
-			if (sim->can_move[PT_PLSM][rt] || rt == PT_H2)
+			auto rx = x + sim->rng.between(-1, 1), ry = y + sim->rng.between(-1, 1), rt = TYP(pmap[ry][rx]);
+			if (can_move[PT_PLSM][rt] || rt == PT_H2)
 			{
 				j = sim->create_part(-3,rx,ry,PT_PLSM);
 				if (j>-1)
@@ -125,7 +130,7 @@ static int update(UPDATE_FUNC_ARGS)
 					parts[j].tmp |= 4;
 				}
 			}
-			parts[i].temp = temp + RNG::Ref().between(750, 1249);
+			parts[i].temp = temp + sim->rng.between(750, 1249);
 			sim->pv[y/CELL][x/CELL] += 30;
 			return 1;
 		}

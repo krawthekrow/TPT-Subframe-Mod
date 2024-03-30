@@ -40,7 +40,7 @@ void Slider::updatePosition(int position)
 	}
 }
 
-void Slider::OnMouseMoved(int x, int y, int dx, int dy)
+void Slider::OnMouseMoved(int x, int y)
 {
 	if(isMouseDown)
 	{
@@ -48,10 +48,13 @@ void Slider::OnMouseMoved(int x, int y, int dx, int dy)
 	}
 }
 
-void Slider::OnMouseClick(int x, int y, unsigned button)
+void Slider::OnMouseDown(int x, int y, unsigned button)
 {
-	isMouseDown = true;
-	updatePosition(x);
+	if (MouseDownInside)
+	{
+		isMouseDown = true;
+		updatePosition(x - Position.X);
+	}
 }
 
 void Slider::OnMouseUp(int x, int y, unsigned button)
@@ -68,8 +71,8 @@ void Slider::SetColour(Colour col1, Colour col2)
 	this->col1 = col1;
 	this->col2 = col2;
 	bgGradient = Graphics::Gradient({
-		{ pixel(PIXRGB(col1.Red, col1.Green, col1.Blue)), 0.f },
-		{ pixel(PIXRGB(col2.Red, col2.Green, col2.Blue)), 1.f },
+		{ col1.NoAlpha(), 0.f },
+		{ col2.NoAlpha(), 1.f },
 	}, Size.X-7);
 }
 
@@ -104,7 +107,6 @@ void Slider::SetSteps(int steps)
 void Slider::Draw(const Point& screenPos)
 {
 	Graphics * g = GetGraphics();
-	//g->drawrect(screenPos.X, screenPos.Y, Size.X, Size.Y, 255, 255, 255, 255);
 
 	if (bgGradient.size())
 	{
@@ -112,13 +114,12 @@ void Slider::Draw(const Point& screenPos)
 		{
 			for (int i = 3; i < Size.X-7; i++)
 			{
-				auto color = bgGradient[i - 3];
-				g->blendpixel(screenPos.X+i+2, screenPos.Y+j+2, PIXR(color), PIXG(color), PIXB(color), 255);
+				g->DrawPixel(screenPos + Vec2{ i + 2, j + 2 }, bgGradient[i - 3]);
 			}
 		}
 	}
 
-	g->drawrect(screenPos.X+3, screenPos.Y+3, Size.X-6, Size.Y-6, 255, 255, 255, 255);
+	g->DrawRect(RectSized(screenPos + Vec2{ 3, 3 }, Size - Vec2{ 6, 6 }), 0xFFFFFF_rgb);
 
 	auto fPosition = float(sliderPosition);
 	auto fSize = float(Size.X-6);
@@ -128,8 +129,8 @@ void Slider::Draw(const Point& screenPos)
 	auto sliderX = int(fSliderX);
 	sliderX += 3;
 
-	g->fillrect(screenPos.X+sliderX-2, screenPos.Y+1, 4, Size.Y-2, 20, 20, 20, 255);
-	g->drawrect(screenPos.X+sliderX-2, screenPos.Y+1, 4, Size.Y-2, 200, 200, 200, 255);
+	g->DrawFilledRect(RectSized(screenPos + Vec2{ sliderX-2, 1 }, Vec2{ 4, Size.Y-2 }), 0x141414_rgb);
+	g->DrawRect(RectSized(screenPos + Vec2{ sliderX-2, 1 }, Vec2{ 4, Size.Y-2 }), 0xC8C8C8_rgb);
 }
 
 } /* namespace ui */

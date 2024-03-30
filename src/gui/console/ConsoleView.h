@@ -1,8 +1,6 @@
-#ifndef CONSOLEVIEW_H_
-#define CONSOLEVIEW_H_
-
-#include <vector>
+#pragma once
 #include "gui/interface/Window.h"
+#include <vector>
 
 namespace ui
 {
@@ -31,5 +29,3 @@ public:
 	void NotifyCurrentCommandChanged(ConsoleModel * sender);
 	virtual ~ConsoleView();
 };
-
-#endif /* CONSOLEVIEW_H_ */

@@ -6,7 +6,7 @@ void Element::Element_BRAY()
 {
 	Identifier = "DEFAULT_PT_BRAY";
 	Name = "BRAY";
-	Colour = PIXPACK(0xFFFFFF);
+	Colour = 0xFFFFFF_rgb;
 	MenuVisible = 0;
 	MenuSection = SC_ELEC;
 	Enabled = 1;
@@ -52,7 +52,7 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 	int x, trans = 255;
 	if(cpart->tmp==0)
 	{
-		trans = cpart->life * 7 + ren->bray_life_brightness_threshold;
+		trans = cpart->life * 7 + gfctx.ren->bray_life_brightness_threshold;
 		if (trans>255) trans = 255;
 		if (cpart->ctype&0x3FFFFFFF) {
 			*colg = 0;
@@ -72,7 +72,7 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 	}
 	else if(cpart->tmp==1)
 	{
-		trans = cpart->life/4 + ren->bray_life_brightness_threshold;
+		trans = cpart->life/4 + gfctx.ren->bray_life_brightness_threshold;
 		if (trans>255) trans = 255;
 		if (cpart->ctype&0x3FFFFFFF) {
 			*colg = 0;

@@ -1,29 +1,30 @@
-#include <iostream>
 #include "Appearance.h"
 #include "graphics/Graphics.h"
+#include <iostream>
 
 namespace ui
 {
 	Appearance::Appearance():
-		texture(NULL),
+		texture(nullptr),
 
 		VerticalAlign(AlignMiddle),
 		HorizontalAlign(AlignCentre),
 
-		BackgroundHover(20, 20, 20),
-		BackgroundInactive(0, 0, 0),
-		BackgroundActive(255, 255, 255),
-		BackgroundDisabled(10, 10, 10),
+		BackgroundHover(0x141414_rgb .WithAlpha(0xFF)),
+		BackgroundInactive(0x000000_rgb .WithAlpha(0xFF)),
+		BackgroundActive(0xFFFFFF_rgb .WithAlpha(0xFF)),
+		BackgroundDisabled(0x0A0A0A_rgb .WithAlpha(0xFF)),
 
-		TextHover(255, 255, 255),
-		TextInactive(255, 255, 255),
-		TextActive(0, 0, 0),
-		TextDisabled(100, 100, 100),
+		TextHover(0xFFFFFF_rgb .WithAlpha(0xFF)),
+		TextInactive(0xFFFFFF_rgb .WithAlpha(0xFF)),
+		TextActive(0x000000_rgb .WithAlpha(0xFF)),
+		TextDisabled(0x646464_rgb .WithAlpha(0xFF)),
 
-		BorderHover(255, 255, 255),
-		BorderInactive(200, 200, 200),
-		BorderActive(235, 235, 235),
-		BorderDisabled(100, 100, 100),
+		BorderHover(0xFFFFFF_rgb .WithAlpha(0xFF)),
+		BorderInactive(0xC8C8C8_rgb .WithAlpha(0xFF)),
+		BorderActive(0xEBEBEB_rgb .WithAlpha(0xFF)),
+		BorderFavorite(0xFFFF00_rgb .WithAlpha(0xFF)),
+		BorderDisabled(0x646464_rgb .WithAlpha(0xFF)),
 
 		Margin(1, 4),
 		Border(1),
@@ -31,23 +32,13 @@ namespace ui
 		icon(NoIcon)
 	{}
 
-	VideoBuffer * Appearance::GetTexture()
+	VideoBuffer const *Appearance::GetTexture()
 	{
-		return texture;
+		return texture.get();
 	}
 
-	void Appearance::SetTexture(VideoBuffer * texture)
+	void Appearance::SetTexture(std::unique_ptr<VideoBuffer> texture)
 	{
-		delete this->texture;
-		if(texture)
-			this->texture = new VideoBuffer(texture);
-		else
-			this->texture = NULL;
+		this->texture = std::move(texture);
 	}
-
-	Appearance::~Appearance()
-	{
-		delete texture;
-	}
-
 }

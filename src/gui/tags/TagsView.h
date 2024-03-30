@@ -1,8 +1,6 @@
-#ifndef TAGSVIEW_H_
-#define TAGSVIEW_H_
-
-#include <vector>
+#pragma once
 #include "gui/interface/Window.h"
+#include <vector>
 
 namespace ui
 {
@@ -24,9 +22,8 @@ class TagsView: public ui::Window {
 public:
 	TagsView();
 	void OnDraw() override;
+	void OnTick(float dt) override;
 	void AttachController(TagsController * c_) { c = c_; }
 	void OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt) override;
 	void NotifyTagsChanged(TagsModel * sender);
 };
-
-#endif /* TAGSVIEW_H_ */

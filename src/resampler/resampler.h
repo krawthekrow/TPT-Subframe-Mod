@@ -1,10 +1,10 @@
 // http://code.google.com/p/imageresampler/
 // resampler.h, Separable filtering image rescaler v2.21, Rich Geldreich - richgel99@gmail.com
 // See unlicense.org text at the bottom of this file.
-#ifndef __RESAMPLER_H__
-#define __RESAMPLER_H__
-#include "Config.h"
+#pragma once
 #include <cstdlib>
+
+#define HIGH_QUALITY_RESAMPLE
 
 #define RESAMPLER_DEBUG_OPS 0
 #define RESAMPLER_DEFAULT_FILTER "lanczos4"
@@ -170,9 +170,6 @@ private:
       return f;
    }
 };
-
-#endif // __RESAMPLER_H__
-
 // This is free and unencumbered software released into the public domain.
 //
 // Anyone is free to copy, modify, publish, use, compile, sell, or

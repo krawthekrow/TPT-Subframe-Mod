@@ -8,8 +8,9 @@
 
 #include "graphics/Graphics.h"
 
-InformationMessage::InformationMessage(String title, String message, bool large):
-	ui::Window(ui::Point(-1, -1), ui::Point(200, 35))
+InformationMessage::InformationMessage(String title, String message, bool large, DismissCallback callback_):
+	ui::Window(ui::Point(-1, -1), ui::Point(200, 35)),
+	callback(callback_)
 {
 	if (large) //Maybe also use this large mode for changelogs eventually, or have it as a customizable size?
 	{
@@ -46,7 +47,7 @@ InformationMessage::InformationMessage(String title, String message, bool large)
 		if (messageLabel->Size.Y < messagePanel->Size.Y)
 			messagePanel->Size.Y = messageLabel->Size.Y+4;
 		Size.Y += messagePanel->Size.Y+12;
-		Position.Y = (ui::Engine::Ref().GetHeight()-Size.Y)/2;
+		Position.Y = (GetGraphics()->Size().Y - Size.Y) / 2;
 	}
 
 	ui::Label * titleLabel = new ui::Label(ui::Point(4, 5), ui::Point(Size.X-8, 16), title);
@@ -61,6 +62,8 @@ InformationMessage::InformationMessage(String title, String message, bool large)
 	okayButton->Appearance.BorderInactive = ui::Colour(200, 200, 200);
 	okayButton->SetActionCallback({ [this] {
 		CloseActiveWindow();
+		if (callback.dismiss)
+			callback.dismiss();
 		SelfDestruct(); //TODO: Fix component disposal
 	} });
 	AddComponent(okayButton);
@@ -74,6 +77,6 @@ void InformationMessage::OnDraw()
 {
 	Graphics * g = GetGraphics();
 
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 200, 200, 200, 255);
+	g->DrawFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb);
+	g->DrawRect(RectSized(Position, Size), 0xC8C8C8_rgb);
 }

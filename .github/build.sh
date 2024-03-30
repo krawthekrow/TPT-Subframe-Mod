@@ -40,53 +40,12 @@ x86-android-bionic-static) ;;
 x86_64-android-bionic-static) ;;
 arm-android-bionic-static) ;;
 aarch64-android-bionic-static) ;;
+wasm32-emscripten-emscripten-static) ;;
 *) >&2 echo "configuration $BSH_HOST_ARCH-$BSH_HOST_PLATFORM-$BSH_HOST_LIBC-$BSH_STATIC_DYNAMIC is not supported" && exit 1;;
 esac
 
-case $BSH_BUILD_PLATFORM in
-linux)
-	sudo apt update
-	if [[ $BSH_STATIC_DYNAMIC == static ]]; then
-		sudo apt install libc6-dev libc6-dev-i386
-	else
-		sudo apt install libluajit-5.1-dev libcurl4-openssl-dev libfftw3-dev zlib1g-dev libsdl2-dev libbz2-dev libjsoncpp-dev
-	fi
-	if [[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == windows-mingw ]]; then
-		sudo apt install g++-mingw-w64-x86-64
-	fi
-	;;
-darwin)
-	brew install pkg-config binutils
-	if [[ $BSH_STATIC_DYNAMIC != static ]]; then
-		brew install luajit curl fftw zlib sdl2 bzip2 jsoncpp
-	fi
-	;;
-esac
-
-function inplace_sed() {
-	local subst=$1
-	local path=$2
-	if [[ $BSH_BUILD_PLATFORM == darwin ]]; then
-		sed -i "" -e $subst $path
-	else
-		sed -i $subst $path
-	fi
-}
-
-function subst_version() {
-	local path=$1
-	if [[ $BSH_HOST_PLATFORM == darwin ]]; then
-		inplace_sed "s|SUBST_MACOS_MIN_VER|$macos_min_ver|g" $path
-	else
-		inplace_sed "s|SUBST_DATE|$(date --iso-8601)|g" $path
-	fi
-	inplace_sed "s|SUBST_SAVE_VERSION|$save_version|g" $path
-	inplace_sed "s|SUBST_MINOR_VERSION|$minor_version|g" $path
-	inplace_sed "s|SUBST_BUILD_NUM|$build_num|g" $path
-}
-
 if [[ $BSH_HOST_PLATFORM == android ]]; then
-	android_platform=android-30
+	android_platform=android-31
 	if [[ -z "${JAVA_HOME_8_X64-}" ]]; then
 		>&2 echo "JAVA_HOME_8_X64 not set"
 		exit 1
@@ -100,6 +59,60 @@ if [[ $BSH_HOST_PLATFORM == android ]]; then
 		exit 1
 	fi
 fi
+
+if [[ -z ${BSH_NO_PACKAGES-} ]]; then
+	case $BSH_HOST_PLATFORM in
+	android)
+		(
+			export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/tools/bin:$PATH
+			sdkmanager "platforms;$android_platform"
+		)
+		;;
+	windows)
+		if [[ $BSH_BUILD_PLATFORM-$BSH_HOST_LIBC == windows-mingw ]]; then
+			pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-gcc
+			if [[ $BSH_STATIC_DYNAMIC == static ]]; then
+				pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-{cmake,7zip,jq} patch
+			else
+				pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-{pkgconf,bzip2,luajit,jsoncpp,curl,SDL2,libpng,meson,fftw,jq}
+			fi
+			export PKG_CONFIG=$(which pkg-config.exe)
+		fi
+		;;
+	linux)
+		sudo apt update
+		if [[ $BSH_STATIC_DYNAMIC == static ]]; then
+			sudo apt install libc6-dev libc6-dev-i386
+		else
+			sudo apt install libluajit-5.1-dev libcurl4-openssl-dev libfftw3-dev zlib1g-dev libsdl2-dev libbz2-dev libjsoncpp-dev
+		fi
+		;;
+	darwin)
+		brew install pkg-config binutils
+		if [[ $BSH_STATIC_DYNAMIC != static ]]; then
+			brew install luajit curl fftw zlib sdl2 bzip2 jsoncpp
+		fi
+		;;
+	emscripten)
+		git clone https://github.com/emscripten-core/emsdk.git --branch 3.1.30
+		cd emsdk
+		./emsdk install latest
+		./emsdk activate latest
+		. ./emsdk_env.sh
+		cd ..
+		;;
+	esac
+fi
+
+function inplace_sed() {
+	local subst=$1
+	local path=$2
+	if [[ $BSH_BUILD_PLATFORM == darwin ]]; then
+		sed -i "" -e $subst $path
+	else
+		sed -i $subst $path
+	fi
+}
 
 if [[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == windows-msvc ]]; then
 	case $BSH_HOST_ARCH in
@@ -129,9 +142,9 @@ elif [[ $BSH_HOST_PLATFORM == darwin ]]; then
 elif [[ $BSH_HOST_PLATFORM == android ]]; then
 	case $BSH_HOST_ARCH in
 	x86_64)  android_toolchain_prefix=x86_64-linux-android    ; android_system_version=21; android_arch_abi=x86_64     ;;
-	x86)     android_toolchain_prefix=i686-linux-android      ; android_system_version=19; android_arch_abi=x86        ;;
+	x86)     android_toolchain_prefix=i686-linux-android      ; android_system_version=21; android_arch_abi=x86        ;;
 	aarch64) android_toolchain_prefix=aarch64-linux-android   ; android_system_version=21; android_arch_abi=arm64-v8a  ;;
-	arm)     android_toolchain_prefix=armv7a-linux-androideabi; android_system_version=19; android_arch_abi=armeabi-v7a;;
+	arm)     android_toolchain_prefix=armv7a-linux-androideabi; android_system_version=21; android_arch_abi=armeabi-v7a;;
 	esac
 	android_toolchain_dir=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
 	CC=$android_toolchain_dir/bin/$android_toolchain_prefix$android_system_version-clang
@@ -175,15 +188,19 @@ meson_configure=meson$'\t'setup
 if [[ $BSH_DEBUG_RELEASE == release ]]; then
 	meson_configure+=$'\t'-Dbuildtype=debugoptimized
 fi
+if [[ $BSH_HOST_PLATFORM == darwin ]]; then
+	meson_configure+=$'\t'-Dmanifest_macos_min_ver=$macos_min_ver
+else
+	meson_configure+=$'\t'-Dmanifest_date=$(date --iso-8601)
+fi
 meson_configure+=$'\t'-Dapp_name=$APP_NAME
 meson_configure+=$'\t'-Dapp_comment=$APP_COMMENT
 meson_configure+=$'\t'-Dapp_exe=$APP_EXE
 meson_configure+=$'\t'-Dapp_id=$APP_ID
 meson_configure+=$'\t'-Dapp_data=$APP_DATA
 meson_configure+=$'\t'-Dapp_vendor=$APP_VENDOR
-meson_configure+=$'\t'-Db_strip=false
+meson_configure+=$'\t'-Dstrip=false
 meson_configure+=$'\t'-Db_staticpic=false
-meson_configure+=$'\t'-Dinstall_check=true
 meson_configure+=$'\t'-Dmod_id=$MOD_ID
 case $BSH_HOST_ARCH-$BSH_HOST_PLATFORM-$BSH_HOST_LIBC-$BSH_DEBUG_RELEASE in
 x86_64-linux-gnu-debug) ;&
@@ -194,6 +211,18 @@ x86_64-darwin-macos-debug)
 	meson_configure+=$'\t'-Dbuild_font=true
 	;;
 esac
+if [[ $PACKAGE_MODE == nohttp ]]; then
+	meson_configure+=$'\t'-Dhttp=false
+fi
+if [[ $PACKAGE_MODE == nolua ]]; then
+	meson_configure+=$'\t'-Dlua=none
+fi
+if [[ $PACKAGE_MODE == backendvs ]]; then
+	meson_configure+=$'\t'-Dbackend=vs
+	# meson 1.2.3 configures vs projects that bring their own manifest, which conflicts with ours
+	# TODO: remove this patch once https://github.com/mesonbuild/meson/pull/12472 makes it into a release that we can use
+	meson_configure+=$'\t'-Dwindows_utf8cp=false
+fi
 if [[ $BSH_STATIC_DYNAMIC == static ]]; then
 	meson_configure+=$'\t'-Dstatic=prebuilt
 	if [[ $BSH_HOST_PLATFORM == windows ]]; then
@@ -209,6 +238,11 @@ if [[ $BSH_STATIC_DYNAMIC == static ]]; then
 		c_link_args+=\'-static-libstdc++\',
 	fi
 else
+	if [[ "$BSH_HOST_PLATFORM-$BSH_HOST_LIBC $BSH_BUILD_PLATFORM" == "windows-mingw windows" ]]; then
+		meson_configure+=$'\t'-Dworkaround_elusive_bzip2=true
+		meson_configure+=$'\t'-Dworkaround_elusive_bzip2_include_dir=/ucrt64/include
+		meson_configure+=$'\t'-Dworkaround_elusive_bzip2_lib_dir=/ucrt64/lib
+	fi
 	if [[ $BSH_BUILD_PLATFORM == linux ]]; then
 		meson_configure+=$'\t'-Dworkaround_elusive_bzip2=true
 	fi
@@ -232,46 +266,54 @@ fi
 if [[ $RELEASE_TYPE == stable ]]; then
 	stable_or_beta=yes
 fi
-save_version=$(grep -w src/Config.template.h -e "#define SAVE_VERSION" | cut -d ' ' -f 3)
-minor_version=$(grep -w src/Config.template.h -e "#define MINOR_VERSION" | cut -d ' ' -f 3)
-build_num=$(grep -w src/Config.template.h -e "#define BUILD_NUM" | cut -d ' ' -f 3)
-if [[ $stable_or_beta == yes ]] && [[ $MOD_ID != 0 ]]; then
-	save_version=$(echo $RELEASE_NAME | cut -d '.' -f 1)
-	minor_version=$(echo $RELEASE_NAME | cut -d '.' -f 2)
-	build_num=$(echo $RELEASE_NAME | cut -d '.' -f 3)
+if [[ $stable_or_beta == yes ]]; then
+	xyz=$(echo $RELEASE_NAME | cut -d 'v' -f 2 | cut -d 'b' -f 1) # $RELEASE_NAME is vX.Y.Z or vX.Y.Zb
+	display_version_major=$(echo $xyz | cut -d '.' -f 1)
+	display_version_minor=$(echo $xyz | cut -d '.' -f 2)
+	build_num=$(echo $xyz | cut -d '.' -f 3)
+	if [[ $MOD_ID != 0 ]]; then
+		meson_configure+=$'\t'-Ddisplay_version_major=$display_version_major
+		meson_configure+=$'\t'-Ddisplay_version_minor=$display_version_minor
+		meson_configure+=$'\t'-Dbuild_num=$build_num
+	fi
 fi
 if [[ $RELEASE_TYPE == snapshot ]]; then
+	build_num=$(echo $RELEASE_NAME | cut -d '-' -f 2) # $RELEASE_NAME is snapshot-X
 	meson_configure+=$'\t'-Dsnapshot=true
-	meson_configure+=$'\t'-Dsnapshot_id=$(echo $RELEASE_NAME | cut -d '-' -f 2) # $RELEASE_NAME is snapshot-X
+	if [[ $MOD_ID != 0 ]]; then
+		meson_configure+=$'\t'-Dbuild_num=$build_num
+	fi
 fi
 if [[ $RELEASE_TYPE == snapshot ]] && [[ $MOD_ID != 0 ]]; then
 	>&2 echo "mods and snapshots do not mix"
 	exit 1
 fi
-if [[ $stable_or_beta == yes ]] && [[ $MOD_ID != 0 ]]; then
-	# mods and snapshots both check their snapshot_id against whatever version starcatcher.us/TPT has
-	meson_configure+=$'\t'-Dsnapshot_id=$(echo $RELEASE_NAME | cut -d '.' -f 3) # $RELEASE_NAME is vX.Y.Z
-fi
 if [[ $RELEASE_TYPE == snapshot ]] || [[ $MOD_ID != 0 ]]; then
 	meson_configure+=$'\t'-Dupdate_server=starcatcher.us/TPT
+	if [[ $BSH_HOST_PLATFORM == emscripten ]]; then
+		meson_configure+=$'\t'-Dserver=tptserv.starcatcher.us
+		meson_configure+=$'\t'-Dstatic_server=tptserv.starcatcher.us/Static
+	fi
 fi
 if [[ $RELEASE_TYPE != dev ]]; then
 	meson_configure+=$'\t'-Dignore_updates=false
 fi
-if [[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == windows-mingw ]]; then
-	if [[ $BSH_BUILD_PLATFORM == linux ]]; then
-		meson_configure+=$'\t'--cross-file=.github/mingw-ghactions.ini
-	fi
+if [[ "$BSH_HOST_PLATFORM-$BSH_HOST_LIBC" == "windows-mingw" ]]; then
+	meson_configure+=$'\t'--cross-file=.github/mingw-ghactions.ini
+	# there is some mingw bug that only ever manifests on ghactions which makes MakeIco.exe use tons of memory and fail
+	# TODO: remove this hack once we figure out how to fix that
+	meson_configure+=$'\t'-Dwindows_icons=false
 fi
-if [[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC != windows-mingw ]] && [[ $BSH_STATIC_DYNAMIC == static ]]; then
-	# LTO simply doesn't work with MinGW. I have no idea why and I also don't care.
-	# It also has a tendency to not play well with dynamic libraries.
+if [[ $BSH_DEBUG_RELEASE-$BSH_STATIC_DYNAMIC == release-static ]]; then
 	meson_configure+=$'\t'-Db_lto=true
 fi
 if [[ $BSH_HOST_PLATFORM-$BSH_HOST_ARCH == darwin-aarch64 ]]; then
 	meson_configure+=$'\t'--cross-file=.github/macaa64-ghactions.ini
 fi
-if [[ $RELEASE_TYPE == tptlibsdev ]] && ([[ $BSH_HOST_PLATFORM == windows ]] || [[ $BSH_STATIC_DYNAMIC == static ]]); then
+if [[ $BSH_HOST_PLATFORM == emscripten ]]; then
+	meson_configure+=$'\t'--cross-file=.github/emscripten-ghactions.ini
+fi
+if [[ $RELEASE_TYPE == tptlibsdev ]] && ([[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == windows-msvc ]] || [[ $BSH_STATIC_DYNAMIC == static ]]); then
 	if [[ -z ${TPTLIBSREMOTE-} ]]; then
 		if [[ -z "${GITHUB_REPOSITORY_OWNER-}" ]]; then
 			>&2 echo "GITHUB_REPOSITORY_OWNER not set"
@@ -280,11 +322,6 @@ if [[ $RELEASE_TYPE == tptlibsdev ]] && ([[ $BSH_HOST_PLATFORM == windows ]] || 
 		tptlibsremote=https://github.com/$GITHUB_REPOSITORY_OWNER/tpt-libs
 	else
 		tptlibsremote=$TPTLIBSREMOTE
-	fi
-	if [[ "$BSH_HOST_ARCH-$BSH_HOST_PLATFORM-$BSH_HOST_LIBC-$BSH_STATIC_DYNAMIC $BSH_BUILD_PLATFORM" == "x86_64-windows-mingw-dynamic linux" ]]; then
-		>&2 echo "this configuration is not supported in tptlibsdev mode"
-		touch $ASSET_PATH
-		exit 0
 	fi
 	tptlibsbranch=$(echo $RELEASE_NAME | cut -d '-' -f 2-) # $RELEASE_NAME is tptlibsdev-BRANCH
 	if [[ -d build-tpt-libs ]] && [[ ${TPTLIBSRESET-} == yes ]]; then
@@ -313,7 +350,11 @@ if [[ $RELEASE_TYPE == tptlibsdev ]] && ([[ $BSH_HOST_PLATFORM == windows ]] || 
 	meson_configure+=$'\t'-Dtpt_libs_vtag=$tpt_libs_vtag
 fi
 if [[ $BSH_HOST_PLATFORM == android ]]; then
-	android_platform=android-30
+	android_platform_jar=$ANDROID_SDK_ROOT/platforms/$android_platform/android.jar
+	if ! [[ -f $android_platform_jar ]]; then
+		>&2 echo "$android_platform_jar not found"
+		exit 1
+	fi
 	meson_configure+=$'\t'--cross-file=android/cross/$BSH_HOST_ARCH.ini
 	cat << ANDROID_INI > .github/android-ghactions.ini
 [constants]
@@ -324,7 +365,7 @@ andriod_sdk_build_tools = '$ANDROID_SDK_ROOT/build-tools/32.0.0'
 # android_ndk_toolchain_prefix comes from the correct cross-file in ./android/cross
 android_ndk_toolchain_prefix = android_ndk_toolchain_prefix
 android_platform = '$android_platform'
-android_platform_jar = '$ANDROID_SDK_ROOT/platforms/' + android_platform + '/android.jar'
+android_platform_jar = '$android_platform_jar'
 java_runtime_jar = '$JAVA_HOME_8_X64/jre/lib/rt.jar'
 
 [binaries]
@@ -341,7 +382,6 @@ zipalign = andriod_sdk_build_tools / 'zipalign'
 apksigner = andriod_sdk_build_tools / 'apksigner'
 ANDROID_INI
 	meson_configure+=$'\t'--cross-file=.github/android-ghactions.ini
-	meson_configure+=$'\t'-Dhttp=false
 fi
 meson_configure+=$'\t'-Dc_args=[$c_args]
 meson_configure+=$'\t'-Dcpp_args=[$c_args]
@@ -349,6 +389,29 @@ meson_configure+=$'\t'-Dc_link_args=[$c_link_args]
 meson_configure+=$'\t'-Dcpp_link_args=[$c_link_args]
 $meson_configure build
 cd build
+
+function verify_version_component() {
+	local key=$1
+	local expected=$2
+	local actual=$(jq -r '.[] | select(.name == "'$key'") | .value' < meson-info/intro-buildoptions.json)
+	if [[ $actual != $expected ]]; then
+		>&2 echo "meson option $key expected to be $expected, is instead $actual"
+		exit 1
+	fi
+}
+if [[ $stable_or_beta == yes ]] && [[ $MOD_ID == 0 ]]; then
+	verify_version_component display_version_major $display_version_major
+	verify_version_component display_version_minor $display_version_minor
+	verify_version_component build_num $build_num
+	verify_version_component upstream_version_major $display_version_major
+	verify_version_component upstream_version_minor $display_version_minor
+	verify_version_component upstream_build_num $build_num
+fi
+if [[ $RELEASE_TYPE == snapshot ]] && [[ $MOD_ID == 0 ]]; then
+	verify_version_component build_num $build_num
+	verify_version_component upstream_build_num $build_num
+fi
+
 strip=strip
 objcopy=objcopy
 strip_target=$ASSET_PATH
@@ -359,18 +422,29 @@ if [[ $BSH_HOST_PLATFORM == android ]]; then
 fi
 if [[ $PACKAGE_MODE == appimage ]]; then
 	# so far this can only happen with $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == linux-gnu, but this may change later
-	meson configure -Dinstall_check=false -Dignore_updates=true -Dbuild_render=false -Dbuild_font=false
+	meson configure -Dcan_install=no -Dignore_updates=true -Dbuild_render=false -Dbuild_font=false
 	strip_target=$APP_EXE
 fi
-if [[ $BSH_BUILD_PLATFORM == windows ]]; then
+meson_compile=meson$'\t'compile
+meson_compile+=$'\t'-v
+if [[ $BSH_BUILD_PLATFORM == windows ]] && [[ $PACKAGE_MODE != backendvs ]]; then
 	set +e
-	ninja -v -d keeprsp
+	meson_compile+=$'\t'--ninja-args='["-d","keeprsp"]'
+	$meson_compile
 	ninja_code=$?
 	set -e
 	cat $APP_EXE.exe.rsp
 	[[ $ninja_code == 0 ]];
+	echo # rsps don't usually have a newline at the end
+	if [[ "$BSH_HOST_PLATFORM-$BSH_STATIC_DYNAMIC $BSH_BUILD_PLATFORM" == "windows-dynamic windows" ]]; then
+		# on windows we provide the dynamic dependencies also; makes sense to check for their presence
+		# msys ldd works fine but only on windows build machines
+		if ldd $APP_EXE | grep "not found"; then
+			exit 1 # ldd | grep will have printed missing deps
+		fi
+	fi
 else
-	ninja -v
+	$meson_compile
 fi
 
 if [[ $SEPARATE_DEBUG == yes ]] && [[ $BSH_HOST_PLATFORM-$BSH_HOST_LIBC != windows-msvc ]]; then
@@ -391,7 +465,6 @@ if [[ $PACKAGE_MODE == dmg ]]; then
 	mkdir $appdir
 	mkdir $appdir/Contents
 	cp resources/Info.plist $appdir/Contents/Info.plist
-	subst_version $appdir/Contents/Info.plist
 	mkdir $appdir/Contents/MacOS
 	cp $APP_EXE $appdir/Contents/MacOS/$APP_EXE
 	mkdir $appdir/Contents/Resources
@@ -411,8 +484,9 @@ if [[ $PACKAGE_MODE == dmg ]]; then
 	mv $appdir dmgroot/$appdir
 	cp ../LICENSE dmgroot/LICENSE
 	cp ../README.md dmgroot/README.md
-	hdiutil create uncompressed.dmg -ov -volname $APP_NAME -fs HFS+ -srcfolder dmgroot
-	hdiutil convert uncompressed.dmg -format UDZO -o $ASSET_PATH
+	hdiutil create -format UDZO -volname $APP_NAME -fs HFS+ -srcfolder dmgroot -o $ASSET_PATH
+elif [[ $PACKAGE_MODE == emscripten ]]; then
+	tar cvf $ASSET_PATH $APP_EXE.js $APP_EXE.worker.js $APP_EXE.wasm
 elif [[ $PACKAGE_MODE == appimage ]]; then
 	# so far this can only happen with $BSH_HOST_PLATFORM-$BSH_HOST_LIBC == linux-gnu, but this may change later
 	case $BSH_HOST_ARCH in
@@ -435,7 +509,6 @@ elif [[ $PACKAGE_MODE == appimage ]]; then
 	cp ../resources/icon_exe.svg $appdir/$APP_VENDOR-$APP_EXE.svg
 	cp resources/powder.desktop $appdir/$APP_ID.desktop
 	cp resources/appdata.xml $appdir/usr/share/metainfo/$APP_ID.appdata.xml
-	subst_version $appdir/usr/share/metainfo/$APP_ID.appdata.xml
 	cp $appdir/$APP_VENDOR-$APP_EXE.svg $appdir/usr/share/icons/$APP_VENDOR-$APP_EXE.svg
 	cp $appdir/$APP_ID.desktop $appdir/usr/share/applications/$APP_ID.desktop
 	./appimagetool $appdir $ASSET_PATH

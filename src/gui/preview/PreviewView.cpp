@@ -4,6 +4,9 @@
 
 #include "client/Client.h"
 #include "client/SaveInfo.h"
+#include "client/GameSave.h"
+#include "client/http/AddCommentRequest.h"
+#include "client/http/ReportSaveRequest.h"
 
 #include "gui/dialogues/TextPrompt.h"
 #include "gui/profile/ProfileActivity.h"
@@ -12,28 +15,26 @@
 #include "gui/preview/PreviewController.h"
 #include "gui/preview/PreviewModel.h"
 #include "gui/interface/Button.h"
-#include "gui/interface/Keys.h"
 #include "gui/interface/CopyTextButton.h"
 #include "gui/interface/Label.h"
 #include "gui/interface/Textbox.h"
 #include "gui/interface/Engine.h"
 #include "gui/dialogues/ErrorMessage.h"
+#include "gui/dialogues/InformationMessage.h"
 #include "gui/interface/Point.h"
 #include "gui/interface/Window.h"
 #include "gui/Style.h"
 
 #include "common/tpt-rand.h"
-#include "Comment.h"
+#include "common/platform/Platform.h"
 #include "Format.h"
 #include "Misc.h"
 
-#ifdef GetUserName
-# undef GetUserName // dammit windows
-#endif
+#include "SimulationConfig.h"
+#include <SDL.h>
 
-PreviewView::PreviewView():
+PreviewView::PreviewView(std::unique_ptr<VideoBuffer> newSavePreview):
 	ui::Window(ui::Point(-1, -1), ui::Point((XRES/2)+210, (YRES/2)+150)),
-	savePreview(NULL),
 	submitCommentButton(NULL),
 	addCommentBox(NULL),
 	commentWarningLabel(NULL),
@@ -46,11 +47,17 @@ PreviewView::PreviewView():
 	commentBoxHeight(20),
 	commentHelpText(false)
 {
+	if (newSavePreview)
+	{
+		newSavePreview->Resize(RES / 2, true);
+		savePreview = std::move(newSavePreview);
+	}
 	showAvatars = ui::Engine::Ref().ShowAvatars;
 
 	favButton = new ui::Button(ui::Point(50, Size.Y-19), ui::Point(51, 19), "Fav");
 	favButton->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	favButton->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	favButton->SetTogglable(true);
 	favButton->SetIcon(IconFavourite);
 	favButton->SetActionCallback({ [this] { c->FavouriteSave(); } });
 	favButton->Enabled = Client::Ref().GetAuthUser().UserID?true:false;
@@ -62,7 +69,12 @@ PreviewView::PreviewView():
 	reportButton->SetIcon(IconReport);
 	reportButton->SetActionCallback({ [this] {
 		new TextPrompt("Report Save", "Things to consider when reporting:\n\bw1)\bg When reporting stolen saves, please include the ID of the original save.\n\bw2)\bg Do not ask for saves to be removed from front page unless they break the rules.\n\bw3)\bg You may report saves for comments or tags too (including your own saves)", "", "[reason]", true, { [this](String const &resultText) {
-			c->Report(resultText);
+			if (reportSaveRequest)
+			{
+				return;
+			}
+			reportSaveRequest = std::make_unique<http::ReportSaveRequest>(c->SaveID(), resultText);
+			reportSaveRequest->Start();
 		} });
 	} });
 	reportButton->Enabled = Client::Ref().GetAuthUser().UserID?true:false;
@@ -82,10 +94,26 @@ PreviewView::PreviewView():
 	browserOpenButton->SetActionCallback({ [this] { c->OpenInBrowser(); } });
 	AddComponent(browserOpenButton);
 
+	loadErrorButton = new ui::Button({ 0, 0 }, ui::Point(148, 19), "Error loading save");
+	loadErrorButton->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
+	loadErrorButton->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	loadErrorButton->SetIcon(IconDelete);
+	loadErrorButton->SetActionCallback({ [this] { ShowLoadError(); } });
+	loadErrorButton->Visible = false;
+	AddComponent(loadErrorButton);
+
+	missingElementsButton = new ui::Button({ 0, 0 }, ui::Point(148, 19), "Missing custom elements");
+	missingElementsButton->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
+	missingElementsButton->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	missingElementsButton->SetIcon(IconReport);
+	missingElementsButton->SetActionCallback({ [this] { ShowMissingCustomElements(); } });
+	missingElementsButton->Visible = false;
+	AddComponent(missingElementsButton);
+
 	if(showAvatars)
-		saveNameLabel = new ui::Label(ui::Point(39, (YRES/2)+4), ui::Point(100, 16), "");
+		saveNameLabel = new ui::Label(ui::Point(39, (YRES/2)+4), ui::Point(180, 16), "");
 	else
-		saveNameLabel = new ui::Label(ui::Point(5, (YRES/2)+4), ui::Point(100, 16), "");
+		saveNameLabel = new ui::Label(ui::Point(5, (YRES/2)+4), ui::Point(200, 16), "");
 	saveNameLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	saveNameLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(saveNameLabel);
@@ -101,9 +129,9 @@ PreviewView::PreviewView():
 	AddComponent(saveDescriptionLabel);
 
 	if(showAvatars)
-		authorDateLabel = new ui::Label(ui::Point(39, (YRES/2)+4+15), ui::Point(180, 16), "");
+		authorDateLabel = new ui::Label(ui::Point(39, (YRES/2)+4+15), ui::Point(200, 16), "");
 	else
-		authorDateLabel = new ui::Label(ui::Point(5, (YRES/2)+4+15), ui::Point(200, 16), "");
+		authorDateLabel = new ui::Label(ui::Point(5, (YRES/2)+4+15), ui::Point(220, 16), "");
 	authorDateLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	authorDateLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(authorDateLabel);
@@ -120,7 +148,7 @@ PreviewView::PreviewView():
 		AddComponent(avatarButton);
 	}
 
-	viewsLabel = new ui::Label(ui::Point((XRES/2)-80, (YRES/2)+4+15), ui::Point(80, 16), "");
+	viewsLabel = new ui::Label(ui::Point((XRES/2)-88, (YRES/2)+4+15), ui::Point(88, 16), "");
 	viewsLabel->Appearance.HorizontalAlign = ui::Appearance::AlignRight;
 	viewsLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(viewsLabel);
@@ -147,13 +175,13 @@ void PreviewView::AttachController(PreviewController * controller)
 {
 	c = controller;
 
-	int textWidth = Graphics::textwidth("Click the box below to copy the save ID");
+	int textWidth = Graphics::TextSize("Click the box below to copy the save ID").X - 1;
 	saveIDLabel = new ui::Label(ui::Point((Size.X-textWidth-20)/2, Size.Y+5), ui::Point(textWidth+20, 16), "Click the box below to copy the save ID");
 	saveIDLabel->SetTextColour(ui::Colour(150, 150, 150));
 	saveIDLabel->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
 	AddComponent(saveIDLabel);
 
-	textWidth = Graphics::textwidth(String::Build(c->SaveID()));
+	textWidth = Graphics::TextSize(String::Build(c->SaveID())).X - 1;
 	saveIDLabel2 = new ui::Label(ui::Point((Size.X-textWidth-20)/2-37, Size.Y+22), ui::Point(40, 16), "Save ID:");
 	AddComponent(saveIDLabel2);
 
@@ -165,7 +193,7 @@ void PreviewView::commentBoxAutoHeight()
 {
 	if(!addCommentBox)
 		return;
-	int textWidth = Graphics::textwidth(addCommentBox->GetText().c_str());
+	int textWidth = Graphics::TextSize(addCommentBox->GetText().c_str()).X - 1;
 	if (commentHelpText || textWidth+15 > Size.X-(XRES/2)-48)
 	{
 		addCommentBox->Appearance.VerticalAlign = ui::Appearance::AlignTop;
@@ -216,11 +244,16 @@ void PreviewView::CheckComment()
 	if (!commentWarningLabel)
 		return;
 	String text = addCommentBox->GetText().ToLower();
-	if (!userIsAuthor && (text.Contains("stolen") || text.Contains("copied")))
+	if (addCommentRequest)
+	{
+		commentWarningLabel->SetText("Submitting comment...");
+		commentHelpText = true;
+	}
+	else if (!userIsAuthor && (text.Contains("stolen") || text.Contains("copied")))
 	{
 		if (!commentHelpText)
 		{
-			if (random_gen()%2)
+			if (interfaceRng()%2)
 				commentWarningLabel->SetText("Stolen? Report the save instead");
 			else
 				commentWarningLabel->SetText("Please report stolen saves");
@@ -236,7 +269,7 @@ void PreviewView::CheckComment()
 	{
 		if (!commentHelpText)
 		{
-			if (random_gen()%2)
+			if (interfaceRng()%2)
 				commentWarningLabel->SetText("Please do not swear");
 			else
 				commentWarningLabel->SetText("Bad language may be deleted");
@@ -252,27 +285,30 @@ void PreviewView::CheckComment()
 
 void PreviewView::DoDraw()
 {
-	Window::DoDraw();
 	Graphics * g = GetGraphics();
-	for (size_t i = 0; i < commentTextComponents.size(); i++)
+	if (!c->GetFromUrl())
 	{
-		int linePos = commentTextComponents[i]->Position.Y+commentsPanel->ViewportPosition.Y+commentTextComponents[i]->Size.Y+4;
-		if (linePos > 0 && linePos < Size.Y-commentBoxHeight)
-		g->draw_line(
-				Position.X+1+XRES/2,
-				Position.Y+linePos,
-				Position.X+Size.X-2,
-				Position.Y+linePos,
-				255, 255, 255, 100);
+		Window::DoDraw();
+		for (size_t i = 0; i < commentTextComponents.size(); i++)
+		{
+			int linePos = commentTextComponents[i]->Position.Y+commentsPanel->ViewportPosition.Y+commentTextComponents[i]->Size.Y+4;
+			if (linePos > 0 && linePos < Size.Y-commentBoxHeight)
+			g->BlendLine(
+					Position + Vec2{ 1+XRES/2, linePos },
+					Position + Vec2{ Size.X-2, linePos },
+					0xFFFFFF_rgb .WithAlpha(100));
+		}
 	}
 	if (c->GetDoOpen())
 	{
-		g->fillrect(Position.X+(Size.X/2)-101, Position.Y+(Size.Y/2)-26, 202, 52, 0, 0, 0, 210);
-		g->drawrect(Position.X+(Size.X/2)-100, Position.Y+(Size.Y/2)-25, 200, 50, 255, 255, 255, 180);
-		g->drawtext(Position.X+(Size.X/2)-(Graphics::textwidth("Loading save...")/2), Position.Y+(Size.Y/2)-5, "Loading save...", style::Colour::InformationTitle.Red, style::Colour::InformationTitle.Green, style::Colour::InformationTitle.Blue, 255);
+		g->BlendFilledRect(RectSized(Position + Size / 2 - Vec2{ 101, 26 }, { 202, 52 }), 0x000000_rgb .WithAlpha(210));
+		g->BlendRect(RectSized(Position + Size / 2 - Vec2{ 100, 25 }, Vec2{ 200, 50 }), 0xFFFFFF_rgb .WithAlpha(180));
+		g->BlendText(Position + Vec2{(Size.X/2)-((Graphics::TextSize("Loading save...").X - 1)/2), (Size.Y/2)-5}, "Loading save...", style::Colour::InformationTitle.NoAlpha().WithAlpha(255));
 	}
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
-
+	if (!c->GetFromUrl())
+	{
+		g->DrawRect(RectSized(Position, Size), 0xFFFFFF_rgb);
+	}
 }
 
 void PreviewView::OnDraw()
@@ -280,15 +316,15 @@ void PreviewView::OnDraw()
 	Graphics * g = GetGraphics();
 
 	//Window Background+Outline
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+4, Size.Y+4);
+	g->DrawFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb);
 
 	//Save preview (top-left)
-	if(savePreview && savePreview->Buffer)
+	if (savePreview)
 	{
-		g->draw_image(savePreview, (Position.X+1)+(((XRES/2)-savePreview->Width)/2), (Position.Y+1)+(((YRES/2)-savePreview->Height)/2), 255);
+		g->BlendImage(savePreview->Data(), 0xFF, RectSized(Position + Vec2(1, 1) + (RES / 2 - savePreview->Size()) / 2, savePreview->Size()));
 	}
-	g->drawrect(Position.X, Position.Y, (XRES/2)+1, (YRES/2)+1, 255, 255, 255, 100);
-	g->draw_line(Position.X+XRES/2, Position.Y+1, Position.X+XRES/2, Position.Y+Size.Y-2, 200, 200, 200, 255);
+	g->BlendRect(RectSized(Position, RES / 2 + Vec2{ 1, 1 }), 0xFFFFFF_rgb .WithAlpha(100));
+	g->DrawLine(Position + Vec2{ XRES/2, 1 }, Position + Vec2{ XRES/2, Size.Y-2 }, 0xC8C8C8_rgb);
 
 	if(votesUp || votesDown)
 	{
@@ -312,13 +348,13 @@ void PreviewView::OnDraw()
 		nyu = nyu>50?50:nyu;
 		nyd = nyd>50?50:nyd;
 
-		g->fillrect(Position.X+(XRES/2)-55, Position.Y+(YRES/2)+3, 53, 7, 0, 107, 10, 255);
-		g->fillrect(Position.X+(XRES/2)-55, Position.Y+(YRES/2)+9, 53, 7, 107, 10, 0, 255);
-		g->drawrect(Position.X+(XRES/2)-55, Position.Y+(YRES/2)+3, 53, 7, 128, 128, 128, 255);
-		g->drawrect(Position.X+(XRES/2)-55, Position.Y+(YRES/2)+9, 53, 7, 128, 128, 128, 255);
+		g->DrawFilledRect(RectSized(Position + RES / 2 + Vec2{ -56, 3 }, Vec2{ 54, 7 }), 0x006B0A_rgb);
+		g->DrawFilledRect(RectSized(Position + RES / 2 + Vec2{ -56, 9 }, Vec2{ 54, 7 }), 0x6B0A00_rgb);
+		g->DrawRect(RectSized(Position + Vec2{ (XRES/2)-56, (YRES/2)+3 }, { 54, 7 }), 0x808080_rgb);
+		g->DrawRect(RectSized(Position + Vec2{ (XRES/2)-56, (YRES/2)+9 }, { 54, 7 }), 0x808080_rgb);
 
-		g->fillrect(Position.X+(XRES/2)-4-nyu, Position.Y+(YRES/2)+5, nyu, 3, 57, 187, 57, 255);
-		g->fillrect(Position.X+(XRES/2)-4-nyd, Position.Y+(YRES/2)+11, nyd, 3, 187, 57, 57, 255);
+		g->DrawFilledRect(RectSized(Position + RES / 2 + Vec2{ -4-nyu, 5 }, Vec2{ nyu, 3 }), 0x39BB39_rgb);
+		g->DrawFilledRect(RectSized(Position + RES / 2 + Vec2{ -4-nyd, 11 }, Vec2{ nyd, 3 }), 0xBB3939_rgb);
 	}
 }
 
@@ -368,8 +404,40 @@ void PreviewView::OnTick(float dt)
 	c->Update();
 	if (doError)
 	{
-		ErrorMessage::Blocking("Error loading save", doErrorMessage);
-		c->Exit();
+		openButton->Enabled = false;
+		loadErrorButton->Visible = true;
+		UpdateLoadStatus();
+	}
+
+	if (reportSaveRequest && reportSaveRequest->CheckDone())
+	{
+		try
+		{
+			reportSaveRequest->Finish();
+			c->Exit();
+			new InformationMessage("Information", "Report submitted", false);
+		}
+		catch (const http::RequestError &ex)
+		{
+			new ErrorMessage("Error", "Unable to file report: " + ByteString(ex.what()).FromUtf8());
+		}
+		reportSaveRequest.reset();
+	}
+	if (addCommentRequest && addCommentRequest->CheckDone())
+	{
+		try
+		{
+			addCommentBox->SetText("");
+			c->CommentAdded();
+		}
+		catch (const http::RequestError &ex)
+		{
+			new ErrorMessage("Error submitting comment", ByteString(ex.what()).FromUtf8());
+		}
+		submitCommentButton->Enabled = true;
+		commentBoxAutoHeight();
+		addCommentRequest.reset();
+		CheckComment();
 	}
 }
 
@@ -413,11 +481,53 @@ void PreviewView::OnKeyPress(int key, int scan, bool repeat, bool shift, bool ct
 		openButton->DoAction();
 }
 
+void PreviewView::ShowLoadError()
+{
+	new ErrorMessage("Error loading save", doErrorMessage, {});
+}
+
+void PreviewView::ShowMissingCustomElements()
+{
+	StringBuilder sb;
+	sb << "This save uses custom elements that are not currently available. Make sure that you use the mod and/or have all the scripts the save requires to fully load.";
+	auto remainingIds = missingElements.ids;
+	if (missingElements.identifiers.size())
+	{
+		sb << "\n\nA list of identifiers of missing custom elements follows, which may help you determine how to fix this problem.\n";
+		for (auto &[ identifier, id ] : missingElements.identifiers)
+		{
+			sb << "\n - " << identifier.FromUtf8();
+			remainingIds.erase(id); // remove ids from the missing id set that are already covered by unknown identifiers
+		}
+	}
+	if (remainingIds.size())
+	{
+		sb << "\n\nA list of element IDs of missing custom elements with no identifier associated follows. This can only be fixed by the author of the save.\n";
+		for (auto id : remainingIds)
+		{
+			sb << "\n - " << id;
+		}
+	}
+	new InformationMessage("Missing custom elements", sb.Build(), true);
+}
+
+void PreviewView::UpdateLoadStatus()
+{
+	auto y = YRES / 2 - 22;
+	auto showButton = [&y](ui::Button *button) {
+		if (button->Visible)
+		{
+			button->Position = { XRES / 2 - button->Size.X - 3, y };
+			y -= button->Size.Y + 3;
+		}
+	};
+	showButton(missingElementsButton);
+	showButton(loadErrorButton);
+}
+
 void PreviewView::NotifySaveChanged(PreviewModel * sender)
 {
-	SaveInfo * save = sender->GetSaveInfo();
-	delete savePreview;
-	savePreview = NULL;
+	auto *save = sender->GetSaveInfo();
 	if(save)
 	{
 		votesUp = save->votesUp;
@@ -446,34 +556,27 @@ void PreviewView::NotifySaveChanged(PreviewModel * sender)
 		if(save->Favourite)
 		{
 			favButton->Enabled = true;
-			favButton->SetText("Unfav");
+			favButton->SetToggleState(true);
 		}
 		else if(Client::Ref().GetAuthUser().UserID)
 		{
 			favButton->Enabled = true;
-			favButton->SetText("Fav");
+			favButton->SetToggleState(false);
 		}
 		else
 		{
-			favButton->SetText("Fav");
+			favButton->SetToggleState(false);
 			favButton->Enabled = false;
 		}
 
 		if(save->GetGameSave())
 		{
+			missingElements = save->GetGameSave()->missingElements;
 			savePreview = SaveRenderer::Ref().Render(save->GetGameSave(), false, true);
-
-			if(savePreview && savePreview->Buffer && !(savePreview->Width == XRES/2 && savePreview->Height == YRES/2))
-			{
-				pixel * oldData = savePreview->Buffer;
-				float factorX = ((float)XRES/2)/((float)savePreview->Width);
-				float factorY = ((float)YRES/2)/((float)savePreview->Height);
-				float scaleFactor = factorY < factorX ? factorY : factorX;
-				savePreview->Buffer = Graphics::resample_img(oldData, savePreview->Width, savePreview->Height, int(savePreview->Width*scaleFactor), int(savePreview->Height*scaleFactor));
-				delete[] oldData;
-				savePreview->Width = int(savePreview->Width * scaleFactor);
-				savePreview->Height = int(savePreview->Height * scaleFactor);
-			}
+			if (savePreview)
+				savePreview->ResizeToFit(RES / 2, true);
+			missingElementsButton->Visible = missingElements;
+			UpdateLoadStatus();
 		}
 		else if (!sender->GetCanOpen())
 			openButton->Enabled = false;
@@ -485,6 +588,7 @@ void PreviewView::NotifySaveChanged(PreviewModel * sender)
 		saveNameLabel->SetText("");
 		authorDateLabel->SetText("");
 		saveDescriptionLabel->SetText("");
+		favButton->SetToggleState(false);
 		favButton->Enabled = false;
 		if (!sender->GetCanOpen())
 			openButton->Enabled = false;
@@ -493,21 +597,22 @@ void PreviewView::NotifySaveChanged(PreviewModel * sender)
 
 void PreviewView::submitComment()
 {
-	if(addCommentBox)
+	if (addCommentBox)
 	{
 		String comment = addCommentBox->GetText();
+		if (comment.length() < 4)
+		{
+			new ErrorMessage("Error", "Comment is too short");
+			return;
+		}
+
 		submitCommentButton->Enabled = false;
-		addCommentBox->SetText("");
-		addCommentBox->SetPlaceholder("Submitting comment"); //This doesn't appear to ever show since no separate thread is created
 		FocusComponent(NULL);
 
-		if (!c->SubmitComment(comment))
-			addCommentBox->SetText(comment);
+		addCommentRequest = std::make_unique<http::AddCommentRequest>(c->SaveID(), comment);
+		addCommentRequest->Start();
 
-		addCommentBox->SetPlaceholder("Add comment");
-		submitCommentButton->Enabled = true;
-
-		commentBoxAutoHeight();
+		CheckComment();
 	}
 }
 
@@ -539,6 +644,7 @@ void PreviewView::NotifyCommentBoxEnabledChanged(PreviewModel * sender)
 		} });
 		addCommentBox->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 		addCommentBox->SetMultiline(true);
+		addCommentBox->SetLimit(1000);
 		AddComponent(addCommentBox);
 		submitCommentButton = new ui::Button(ui::Point(Size.X-40, Size.Y-19), ui::Point(40, 19), "Submit");
 		submitCommentButton->SetActionCallback({ [this] { submitComment(); } });
@@ -563,6 +669,7 @@ void PreviewView::SaveLoadingError(String errorMessage)
 {
 	doError = true;
 	doErrorMessage = errorMessage;
+	Platform::MarkPresentable();
 }
 
 void PreviewView::NotifyCommentsPageChanged(PreviewModel * sender)
@@ -572,7 +679,7 @@ void PreviewView::NotifyCommentsPageChanged(PreviewModel * sender)
 
 void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 {
-	std::vector<SaveComment*> * comments = sender->GetComments();
+	auto commentsPtr = sender->GetComments();
 
 	for (size_t i = 0; i < commentComponents.size(); i++)
 	{
@@ -583,8 +690,9 @@ void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 	commentTextComponents.clear();
 	commentsPanel->InnerSize = ui::Point(0, 0);
 
-	if (comments)
+	if (commentsPtr)
 	{
+		auto &comments = *commentsPtr;
 		for (size_t i = 0; i < commentComponents.size(); i++)
 		{
 			commentsPanel->RemoveChild(commentComponents[i]);
@@ -597,11 +705,11 @@ void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 		ui::Label * tempUsername;
 		ui::Label * tempComment;
 		ui::AvatarButton * tempAvatar;
-		for (size_t i = 0; i < comments->size(); i++)
+		for (size_t i = 0; i < comments.size(); i++)
 		{
 			if (showAvatars)
 			{
-				tempAvatar = new ui::AvatarButton(ui::Point(2, currentY+7), ui::Point(26, 26), comments->at(i)->authorName);
+				tempAvatar = new ui::AvatarButton(ui::Point(2, currentY+7), ui::Point(26, 26), comments[i].authorName);
 				tempAvatar->SetActionCallback({ [tempAvatar] {
 					if (tempAvatar->GetUsername().size() > 0)
 					{
@@ -612,25 +720,38 @@ void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 				commentsPanel->AddChild(tempAvatar);
 			}
 
+			auto authorNameFormatted = comments[i].authorName.FromUtf8();
+			if (comments[i].authorElevation != User::ElevationNone || comments[i].authorName == "jacobot")
+			{
+				authorNameFormatted = "\bt" + authorNameFormatted;
+			}
+			else if (comments[i].authorIsBanned)
+			{
+				authorNameFormatted = "\bg" + authorNameFormatted;
+			}
+			else if (Client::Ref().GetAuthUser().UserID && Client::Ref().GetAuthUser().Username == comments[i].authorName)
+			{
+				authorNameFormatted = "\bo" + authorNameFormatted;
+			}
+			else if (sender->GetSaveInfo() && sender->GetSaveInfo()->GetUserName() == comments[i].authorName)
+			{
+				authorNameFormatted = "\bl" + authorNameFormatted;
+			}
 			if (showAvatars)
-				tempUsername = new ui::Label(ui::Point(31, currentY+3), ui::Point(Size.X-((XRES/2) + 13 + 26), 16), comments->at(i)->authorNameFormatted.FromUtf8());
+				tempUsername = new ui::Label(ui::Point(31, currentY+8), ui::Point(Size.X-((XRES/2) + 13 + 26), 14), authorNameFormatted);
 			else
-				tempUsername = new ui::Label(ui::Point(5, currentY+3), ui::Point(Size.X-((XRES/2) + 13), 16), comments->at(i)->authorNameFormatted.FromUtf8());
+				tempUsername = new ui::Label(ui::Point(5, currentY+8), ui::Point(Size.X-((XRES/2) + 13), 14), authorNameFormatted);
 			tempUsername->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
-			tempUsername->Appearance.VerticalAlign = ui::Appearance::AlignBottom;
-			if (Client::Ref().GetAuthUser().UserID && Client::Ref().GetAuthUser().Username == comments->at(i)->authorName)
-				tempUsername->SetTextColour(ui::Colour(255, 255, 100));
-			else if (sender->GetSaveInfo() && sender->GetSaveInfo()->GetUserName() == comments->at(i)->authorName)
-				tempUsername->SetTextColour(ui::Colour(255, 100, 100));
+			tempUsername->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 			currentY += 16;
 
 			commentComponents.push_back(tempUsername);
 			commentsPanel->AddChild(tempUsername);
 
 			if (showAvatars)
-				tempComment = new ui::Label(ui::Point(31, currentY+5), ui::Point(Size.X-((XRES/2) + 13 + 26), -1), comments->at(i)->comment);
+				tempComment = new ui::Label(ui::Point(31, currentY+5), ui::Point(Size.X-((XRES/2) + 13 + 26), -1), comments[i].content);
 			else
-				tempComment = new ui::Label(ui::Point(5, currentY+5), ui::Point(Size.X-((XRES/2) + 13), -1), comments->at(i)->comment);
+				tempComment = new ui::Label(ui::Point(5, currentY+5), ui::Point(Size.X-((XRES/2) + 13), -1), comments[i].content);
 			tempComment->SetMultiline(true);
 			tempComment->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 			tempComment->Appearance.VerticalAlign = ui::Appearance::AlignTop;
@@ -665,5 +786,4 @@ PreviewView::~PreviewView()
 		RemoveComponent(submitCommentButton);
 		delete submitCommentButton;
 	}
-	delete savePreview;
 }

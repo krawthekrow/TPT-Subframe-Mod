@@ -1,6 +1,4 @@
 #pragma once
-#include "Config.h"
-
 #include "common/String.h"
 #include "Appearance.h"
 #include "Point.h"
@@ -31,9 +29,7 @@ namespace ui
 		Graphics * GetGraphics();
 
 	public:
-		Component(Window* parent_state);
 		Component(Point position, Point size);
-		Component();
 		virtual ~Component();
 
 		void* UserData;
@@ -47,6 +43,8 @@ namespace ui
 		bool Enabled;
 		bool Visible;
 		bool DoesTextInput;
+		bool MouseInside;
+		bool MouseDownInside;
 
 		ui::Appearance Appearance;
 		//virtual void SetAppearance(ui::Appearance);
@@ -55,6 +53,7 @@ namespace ui
 
 		void Refresh();
 
+		Point GetContainerPos();
 		Point GetScreenPos();
 
 		/* See the parent of this component.
@@ -98,20 +97,8 @@ namespace ui
 		// Params:
 		//	localx: Local mouse X position.
 		//	localy: Local mouse Y position.
-		// 	dx: Mouse X delta.
-		// 	dy: Mouse Y delta.
 		///
-		virtual void OnMouseMoved(int localx, int localy, int dx, int dy);
-
-		///
-		// Called: When the mouse moves.
-		// Params:
-		//	localx: Local mouse X position.
-		//	localy: Local mouse Y position.
-		// 	dx: Mouse X delta.
-		// 	dy: Mouse Y delta.
-		///
-		virtual void OnMouseMovedInside(int localx, int localy, int dx, int dy);
+		virtual void OnMouseMoved(int localx, int localy);
 
 		///
 		// Called: When the mouse moves on top of the item.
@@ -150,22 +137,13 @@ namespace ui
 		virtual void OnMouseUp(int x, int y, unsigned button);
 
 		///
-		// Called: When a mouse button is pressed on top of the item.
+		// Called: When a mouse button is pressed and then released on top of the item.
 		// Params:
 		// 	x: X position of the mouse.
 		// 	y: Y position of the mouse.
 		// 	button: The button that is being held down.
 		///
 		virtual void OnMouseClick(int localx, int localy, unsigned button);
-
-		///
-		// Called: When a mouse button is released on top of the item.
-		// Params:
-		// 	x: X position of the mouse.
-		// 	y: Y position of the mouse.
-		// 	button: The button that is being released.
-		///
-		virtual void OnMouseUnclick(int localx, int localy, unsigned button);
 
 		///
 		// Called: When the mouse wheel moves/changes.

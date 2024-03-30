@@ -6,7 +6,7 @@
 #include "gui/interface/Engine.h"
 #include "gui/interface/Label.h"
 
-#include "PowderToy.h"
+#include "PowderToySDL.h"
 
 #include "graphics/Graphics.h"
 
@@ -27,7 +27,7 @@ ErrorMessage::ErrorMessage(String title, String message, DismissCallback callbac
 	AddComponent(messageLabel);
 
 	Size.Y += messageLabel->Size.Y+12;
-	Position.Y = (ui::Engine::Ref().GetHeight()-Size.Y)/2;
+	Position.Y = (GetGraphics()->Size().Y - Size.Y)/2;
 
 	ui::Button * okayButton = new ui::Button(ui::Point(0, Size.Y-16), ui::Point(Size.X, 16), "Dismiss");
 	okayButton->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
@@ -46,18 +46,10 @@ ErrorMessage::ErrorMessage(String title, String message, DismissCallback callbac
 	MakeActiveWindow();
 }
 
-void ErrorMessage::Blocking(String title, String message)
-{
-	new ErrorMessage(title, message, { [] {
-		ui::Engine::Ref().Break();
-	} });
-	EngineProcess();
-}
-
 void ErrorMessage::OnDraw()
 {
 	Graphics * g = GetGraphics();
 
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 200, 200, 200, 255);
+	g->DrawFilledRect(RectSized(Position - Vec2{ 1, 1 }, Size + Vec2{ 2, 2 }), 0x000000_rgb);
+	g->DrawRect(RectSized(Position, Size), 0xC8C8C8_rgb);
 }

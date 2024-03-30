@@ -7,6 +7,7 @@
 #include "gui/interface/Button.h"
 
 #include "gui/game/Brush.h"
+#include "gui/game/RectangleBrush.h"
 
 #include "simulation/ElementClasses.h"
 #include "simulation/Simulation.h"
@@ -32,7 +33,7 @@ sim(sim_)
 	{
 		String buttonText = (i == FILT_NUM_MODES) ?
 			String::Build("Cancel") : FILT_MODES[i];
-		int textWidth = Graphics::textwidth(buttonText);
+		int textWidth = Graphics::TextSize(buttonText).X - 1;
 		if (textWidth > maxTextWidth)
 			maxTextWidth = textWidth;
 	}
@@ -227,7 +228,7 @@ void ConfigTool::Update(Simulation *sim)
 	}
 }
 
-void ConfigTool::Click(Simulation *sim, Brush *brush, ui::Point position)
+void ConfigTool::Click(Simulation *sim, const Brush &brush, ui::Point position)
 {
 	sim->UpdateSample(position.X, position.Y);
 	Update(sim);
@@ -404,33 +405,40 @@ bool ConfigTool::IsConfiguringTmp2()
 		configState == ConfigState::vsnsTmp2;
 }
 
-void ConfigTool::drawRedLine(Renderer *ren, int startx, int starty, int endx, int endy)
+void ConfigTool::drawRedLine(Renderer *ren, ui::Point start, ui::Point end)
 {
-	ren->draw_line(startx, starty, endx, endy, 255, 0, 0, 200);
+	ren->BlendLine(start, end, 0xff0000_rgb .WithAlpha(200));
 }
 
-void ConfigTool::drawWhiteLine(Renderer *ren, int startx, int starty, int endx, int endy)
+void ConfigTool::drawWhiteLine(Renderer *ren, ui::Point start, ui::Point end)
 {
-	ren->draw_line(startx, starty, endx, endy, 255, 200, 200, 220);
+	ren->BlendLine(start, end, 0xffcccc_rgb .WithAlpha(220));
 }
 
 void ConfigTool::drawTripleLine(Renderer *ren, int firstLineLen, int midLineLen, bool drawFirstLine, bool drawThirdLine)
 {
-	int mid1x = configPart.x + dirx * (drawFirstLine ? firstLineLen : 0),
-		mid1y = configPart.y + diry * (drawFirstLine ? firstLineLen : 0);
-	int mid2x = mid1x + dirx * midLineLen,
-		mid2y = mid1y + diry * midLineLen;
+	ui::Point pos(int(configPart.x+0.5f), int(configPart.y+0.5f));
+	ui::Point dir(dirx, diry);
+	ui::Point mid1 = pos + dir * (drawFirstLine ? firstLineLen : 0);
+	ui::Point mid2 = mid1 + dir * midLineLen;
 	if (drawFirstLine && firstLineLen > 0)
-		drawRedLine(ren, configPart.x + dirx, configPart.y + diry, mid1x, mid1y);
+		drawRedLine(ren, pos + dir, mid1);
 	if (midLineLen > 0)
-		drawWhiteLine(ren, mid1x + dirx, mid1y + diry, mid2x, mid2y);
+		drawWhiteLine(ren, mid1 + dir, mid2);
 	if (drawThirdLine && firstLineLen > 0)
-		drawRedLine(ren, mid2x + dirx, mid2y + diry, mid2x + dirx * firstLineLen, mid2y + diry * firstLineLen);
+		drawRedLine(ren, mid2 + dir, mid2 + dir * firstLineLen);
 }
 
 void ConfigTool::drawSquareRdBox(Renderer *ren)
 {
-	ren->drawrect(configPart.x - configPart.tmp2, configPart.y - configPart.tmp2, configPart.tmp2 * 2 + 1, configPart.tmp2 * 2 + 1, 200, 200, 200, 220);
+	ui::Point pos(int(configPart.x+0.5f), int(configPart.y+0.5f));
+	ren->BlendRect(
+		RectSized(
+			Vec2{ pos.X - configPart.tmp2, pos.Y - configPart.tmp2 },
+			Vec2{ configPart.tmp2 * 2 + 1, configPart.tmp2 * 2 + 1 }
+		),
+		0xcccccc_rgb .WithAlpha(220)
+	);
 }
 
 void ConfigTool::DrawHUD(Renderer *ren)
@@ -438,7 +446,7 @@ void ConfigTool::DrawHUD(Renderer *ren)
 	switch (configState)
 	{
 	case ConfigState::ready:
-		ren->xor_line(cursorPos.X, cursorPos.Y, cursorPos.X, cursorPos.Y);
+		ren->XorLine(cursorPos, cursorPos);
 		if (configPartId == -1)
 			break;
 		switch (configPart.type)
@@ -510,9 +518,9 @@ void ConfigTool::DrawHUD(Renderer *ren)
 		break;
 	case ConfigState::convTmp:
 	{
-		int partX = int(configPart.x+0.5f), partY = int(configPart.y+0.5f);
-		drawRedLine(ren, partX, partY, partX, partY);
-		ren->xor_line(cursorPos.X, cursorPos.Y, cursorPos.X, cursorPos.Y);
+		ui::Point pos(int(configPart.x+0.5f), int(configPart.y+0.5f));
+		drawRedLine(ren, pos, pos);
+		ren->XorLine(cursorPos, cursorPos);
 		break;
 	}
 	default:
@@ -520,59 +528,49 @@ void ConfigTool::DrawHUD(Renderer *ren)
 	}
 }
 
-void ConfigTool::ReleaseTool::Click(Simulation *sim, Brush *brush, ui::Point position)
+void ConfigTool::ReleaseTool::Click(Simulation *sim, const Brush &brush, ui::Point position)
 {
 	if (configTool->IsConfiguring())
 		configTool->Reset(sim);
 	else
 	{
-		ui::Point oldSize = brush->GetRadius();
-		brush->SetRadius(ui::Point(0, 0));
-		clearTool->Click(sim, brush, position);
-		brush->SetRadius(oldSize);
+		RectangleBrush newBrush;
+		clearTool->Click(sim, newBrush, position);
 	}
 }
 
-void ConfigTool::ReleaseTool::Draw(Simulation * sim, Brush * brush, ui::Point position)
+void ConfigTool::ReleaseTool::Draw(Simulation * sim, const Brush &brush, ui::Point position)
 {
 	if (!configTool->IsConfiguring())
 	{
-		ui::Point oldSize = brush->GetRadius();
-		brush->SetRadius(ui::Point(0, 0));
+		RectangleBrush newBrush;
 		clearTool->Draw(sim, brush, position);
-		brush->SetRadius(oldSize);
 	}
 }
 
-void ConfigTool::ReleaseTool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging)
+void ConfigTool::ReleaseTool::DrawLine(Simulation * sim, const Brush &brush, ui::Point position1, ui::Point position2, bool dragging)
 {
 	if (!configTool->IsConfiguring())
 	{
-		ui::Point oldSize = brush->GetRadius();
-		brush->SetRadius(ui::Point(0, 0));
+		RectangleBrush newBrush;
 		clearTool->DrawLine(sim, brush, position1, position2, dragging);
-		brush->SetRadius(oldSize);
 	}
 }
 
-void ConfigTool::ReleaseTool::DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2)
+void ConfigTool::ReleaseTool::DrawRect(Simulation * sim, const Brush &brush, ui::Point position1, ui::Point position2)
 {
 	if (!configTool->IsConfiguring())
 	{
-		ui::Point oldSize = brush->GetRadius();
-		brush->SetRadius(ui::Point(0, 0));
+		RectangleBrush newBrush;
 		clearTool->DrawRect(sim, brush, position1, position2);
-		brush->SetRadius(oldSize);
 	}
 }
 
-void ConfigTool::ReleaseTool::DrawFill(Simulation * sim, Brush * brush, ui::Point position)
+void ConfigTool::ReleaseTool::DrawFill(Simulation * sim, const Brush &brush, ui::Point position)
 {
 	if (!configTool->IsConfiguring())
 	{
-		ui::Point oldSize = brush->GetRadius();
-		brush->SetRadius(ui::Point(0, 0));
+		RectangleBrush newBrush;
 		clearTool->DrawFill(sim, brush, position);
-		brush->SetRadius(oldSize);
 	}
 }

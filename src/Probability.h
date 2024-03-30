@@ -13,12 +13,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef tptmath_h
-#define tptmath_h
-#include "Config.h"
-
+#pragma once
 // This file is used for EMP, to simulate many EMP going off at once at the end of the frame
-
 #include <cmath>
 
 namespace Probability
@@ -41,5 +37,3 @@ namespace Probability
 		unsigned int calc(float randFloat);
 	};
 }
-
-#endif

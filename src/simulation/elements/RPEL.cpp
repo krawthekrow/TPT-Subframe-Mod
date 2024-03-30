@@ -6,7 +6,7 @@ void Element::Element_RPEL()
 {
 	Identifier = "DEFAULT_PT_RPEL";
 	Name = "RPEL";
-	Colour = PIXPACK(0x99CC00);
+	Colour = 0x99CC00_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_FORCE;
 	Enabled = 1;
@@ -49,18 +49,20 @@ void Element::Element_RPEL()
 
 static int update(UPDATE_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	int r, rx, ry, ri;
 	for(ri = 0; ri <= 10; ri++)
 	{
-		rx = RNG::Ref().between(-10, 10);
-		ry = RNG::Ref().between(-10, 10);
+		rx = sim->rng.between(-10, 10);
+		ry = sim->rng.between(-10, 10);
 		if (x+rx >= 0 && x+rx < XRES && y+ry >= 0 && y+ry < YRES && (rx || ry))
 		{
 			r = pmap[y+ry][x+rx];
 			if (!r)
 				r = sim->photons[y+ry][x+rx];
 
-			if (r && !(sim->elements[TYP(r)].Properties & TYPE_SOLID)) {
+			if (r && !(elements[TYP(r)].Properties & TYPE_SOLID)) {
 				if (!parts[i].ctype || parts[i].ctype == parts[ID(r)].type) {
 					parts[ID(r)].vx += isign(rx)*((parts[i].temp-273.15)/10.0f);
 					parts[ID(r)].vy += isign(ry)*((parts[i].temp-273.15)/10.0f);

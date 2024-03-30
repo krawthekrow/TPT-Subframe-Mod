@@ -1,13 +1,11 @@
 #include "simulation/ElementCommon.h"
-
-int Element_VIBR_update(UPDATE_FUNC_ARGS);
-int Element_VIBR_graphics(GRAPHICS_FUNC_ARGS);
+#include "VIBR.h"
 
 void Element::Element_VIBR()
 {
 	Identifier = "DEFAULT_PT_VIBR";
 	Name = "VIBR";
-	Colour = PIXPACK(0x005000);
+	Colour = 0x005000_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;
@@ -50,8 +48,9 @@ void Element::Element_VIBR()
 
 int Element_VIBR_update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rndstore = 0;
-	int trade, transfer;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	int rndstore = 0;
 	if (!parts[i].life) //if not exploding
 	{
 		//Heat absorption code
@@ -83,14 +82,14 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 	else //if it is exploding
 	{
 		//Release sparks before explode
-		rndstore = RNG::Ref().gen();
+		rndstore = sim->rng.gen();
 		if (parts[i].life < 300)
 		{
-			rx = rndstore%3-1;
-			ry = (rndstore>>2)%3-1;
+			auto rx = rndstore%3-1;
+			auto ry = (rndstore>>2)%3-1;
 			rndstore = rndstore >> 4;
-			r = pmap[y+ry][x+rx];
-			if (TYP(r) && TYP(r) != PT_BREC && (sim->elements[TYP(r)].Properties&PROP_CONDUCTS) && !parts[ID(r)].life)
+			auto r = pmap[y+ry][x+rx];
+			if (TYP(r) && TYP(r) != PT_BREC && (elements[TYP(r)].Properties&PROP_CONDUCTS) && !parts[ID(r)].life)
 			{
 				parts[ID(r)].life = 4;
 				parts[ID(r)].ctype = TYP(r);
@@ -100,16 +99,13 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 		//Release all heat
 		if (parts[i].life < 500)
 		{
-			rx = rndstore%7-3;
-			ry = (rndstore>>3)%7-3;
-			if(BOUNDS_CHECK)
+			auto rx = rndstore%7-3;
+			auto ry = (rndstore>>3)%7-3;
+			auto r = pmap[y+ry][x+rx];
+			if (TYP(r) && TYP(r)!=PT_VIBR  && TYP(r)!=PT_BVBR && elements[TYP(r)].HeatConduct && (TYP(r)!=PT_HSWC||parts[ID(r)].life==10))
 			{
-				r = pmap[y+ry][x+rx];
-				if (TYP(r) && TYP(r)!=PT_VIBR  && TYP(r)!=PT_BVBR && sim->elements[TYP(r)].HeatConduct && (TYP(r)!=PT_HSWC||parts[ID(r)].life==10))
-				{
-					parts[ID(r)].temp += parts[i].tmp*3;
-					parts[i].tmp = 0;
-				}
+				parts[ID(r)].temp += parts[i].tmp*3;
+				parts[i].tmp = 0;
 			}
 		}
 		//Explosion code
@@ -117,7 +113,7 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 		{
 			if (!parts[i].tmp2)
 			{
-				rndstore = RNG::Ref().gen();
+				rndstore = sim->rng.gen();
 				int index = sim->create_part(-3,x+((rndstore>>4)&3)-1,y+((rndstore>>6)&3)-1,PT_ELEC);
 				if (index != -1)
 					parts[index].temp = 7000;
@@ -125,7 +121,7 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 				if (index != -1)
 					parts[index].temp = 7000;
 				int rx = ((rndstore>>12)&3)-1;
-				rndstore = RNG::Ref().gen();
+				rndstore = sim->rng.gen();
 				index = sim->create_part(-1,x+rx-1,y+rndstore%3-1,PT_BREC);
 				if (index != -1)
 					parts[index].temp = 7000;
@@ -145,11 +141,13 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 		}
 	}
 	//Neighbor check loop
-	for (rx=-1; rx<2; rx++)
-		for (ry=-1; ry<2; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -1; rx <= 1; rx++)
+	{
+		for (auto ry = -1; ry <= 1; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
 				if (parts[i].life)
@@ -159,7 +157,7 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 					{
 						if (!parts[ID(r)].life)
 							parts[ID(r)].tmp += 45;
-						else if (parts[i].tmp2 && parts[i].life > 75 && RNG::Ref().chance(1, 2))
+						else if (parts[i].tmp2 && parts[i].life > 75 && sim->rng.chance(1, 2))
 						{
 							parts[ID(r)].tmp2 = 1;
 							parts[i].tmp = 0;
@@ -174,7 +172,7 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 				else
 				{
 					//Melts into EXOT
-					if (TYP(r) == PT_EXOT && RNG::Ref().chance(1, 25))
+					if (TYP(r) == PT_EXOT && sim->rng.chance(1, 25))
 					{
 						sim->part_change_type(i, x, y, PT_EXOT);
 						return 1;
@@ -187,22 +185,24 @@ int Element_VIBR_update(UPDATE_FUNC_ARGS)
 					sim->pv[y/CELL][x/CELL] -= 1;
 				}
 			}
-	for (trade = 0; trade < 9; trade++)
+		}
+	}
+	for (auto trade = 0; trade < 9; trade++)
 	{
 		if (!(trade%2))
-			rndstore = RNG::Ref().gen();
-		rx = rndstore%7-3;
+			rndstore = sim->rng.gen();
+		auto rx = rndstore%7-3;
 		rndstore >>= 3;
-		ry = rndstore%7-3;
+		auto ry = rndstore%7-3;
 		rndstore >>= 3;
-		if (BOUNDS_CHECK && (rx || ry))
+		if (rx || ry)
 		{
-			r = pmap[y+ry][x+rx];
+			auto r = pmap[y+ry][x+rx];
 			if (TYP(r) != PT_VIBR && TYP(r) != PT_BVBR)
 				continue;
 			if (parts[i].tmp > parts[ID(r)].tmp)
 			{
-				transfer = parts[i].tmp - parts[ID(r)].tmp;
+				auto transfer = parts[i].tmp - parts[ID(r)].tmp;
 				parts[ID(r)].tmp += transfer/2;
 				parts[i].tmp -= transfer/2;
 				break;

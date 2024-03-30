@@ -1,7 +1,4 @@
-#ifndef MENU_H_
-#define MENU_H_
-#include "Config.h"
-
+#pragma once
 #include "common/String.h"
 
 class Tool;
@@ -39,5 +36,3 @@ public:
 	void ClearTools();
 };
 
-
-#endif /* MENU_H_ */

@@ -1,5 +1,5 @@
-#ifndef UPDATEACTIVITY_H_
-#define UPDATEACTIVITY_H_
+#pragma once
+#include "client/StartupInfo.h"
 
 class Task;
 class TaskWindow;
@@ -8,11 +8,9 @@ class UpdateActivity
 	Task * updateDownloadTask;
 	TaskWindow * updateWindow;
 public:
-	UpdateActivity();
+	UpdateActivity(UpdateInfo info);
 	virtual ~UpdateActivity();
 	void Exit();
 	virtual void NotifyDone(Task * sender);
 	virtual void NotifyError(Task * sender);
 };
-
-#endif /* UPDATEACTIVITY_H_ */

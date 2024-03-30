@@ -1,0 +1,40 @@
+#pragma code_page(65001) // UTF-8
+
+#include "@RESOUCE_H@"
+#include <winuser.h>
+#include <winver.h>
+#include <ntdef.h>
+
+#define HAVE_ICONS @HAVE_ICONS@
+#define HAVE_UTF8CP @HAVE_UTF8CP@
+#if HAVE_ICONS
+IDI_ICON ICON DISCARDABLE "@ICON_EXE_ICO@"
+IDI_DOC_ICON ICON DISCARDABLE "@ICON_CPS_ICO@"
+#endif
+#if HAVE_UTF8CP
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "@WINUTF8_XML@"
+#endif
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @DISPLAY_VERSION_MAJOR@,@DISPLAY_VERSION_MINOR@,0,@BUILD_NUM@
+PRODUCTVERSION @DISPLAY_VERSION_MAJOR@,@DISPLAY_VERSION_MINOR@,0,@BUILD_NUM@
+{
+	BLOCK "StringFileInfo"
+	{
+		BLOCK "040904b0"
+		{
+			VALUE "CompanyName",      "https://powdertoy.co.uk/\0"
+			VALUE "FileDescription",  "@APPNAME@\0"
+			VALUE "FileVersion",      "@DISPLAY_VERSION_MAJOR@.@DISPLAY_VERSION_MINOR@.0.@BUILD_NUM@\0"
+			VALUE "OriginalFilename", "@APPEXE@.exe\0"
+			VALUE "LegalCopyright",   "@MANIFEST_COPYRIGHT@\0"
+			VALUE "ProductName",      "@APPCOMMENT@\0"
+			VALUE "ProductVersion",   "@DISPLAY_VERSION_MAJOR@.@DISPLAY_VERSION_MINOR@.0.@BUILD_NUM@\0"
+			VALUE "InternalName",     "@APPID@\0"
+		}
+	}
+	BLOCK "VarFileInfo"
+	{
+		VALUE "Translation", 0x409, 65001
+	}
+}

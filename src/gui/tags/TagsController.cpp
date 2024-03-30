@@ -1,8 +1,8 @@
 #include "TagsController.h"
-
 #include "TagsModel.h"
 #include "TagsView.h"
-
+#include "client/http/AddTagRequest.h"
+#include "client/http/RemoveTagRequest.h"
 #include "gui/interface/Engine.h"
 #include "client/SaveInfo.h"
 #include "Controller.h"
@@ -36,6 +36,11 @@ void TagsController::AddTag(ByteString tag)
 	tagsModel->AddTag(tag);
 }
 
+void TagsController::Tick()
+{
+	tagsModel->Tick();
+}
+
 void TagsController::Exit()
 {
 	tagsView->CloseActiveWindow();
@@ -46,8 +51,10 @@ void TagsController::Exit()
 
 TagsController::~TagsController()
 {
-	tagsView->CloseActiveWindow();
 	delete tagsModel;
-	delete tagsView;
+	if (tagsView->CloseActiveWindow())
+	{
+		delete tagsView;
+	}
 }
 

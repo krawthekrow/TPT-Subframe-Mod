@@ -1,41 +1,17 @@
-#include "Config.h"
 #include "graphics/Graphics.h"
 #include "graphics/Renderer.h"
-
+#include "common/String.h"
+#include "common/tpt-rand.h"
+#include "Format.h"
+#include "gui/interface/Engine.h"
+#include "client/GameSave.h"
+#include "simulation/Simulation.h"
+#include "simulation/SimulationData.h"
+#include "common/platform/Platform.h"
 #include <ctime>
 #include <iostream>
 #include <fstream>
 #include <vector>
-
-#include "common/String.h"
-#include "Format.h"
-#include "gui/interface/Engine.h"
-
-#include "client/GameSave.h"
-#include "simulation/Simulation.h"
-
-
-void EngineProcess() {}
-void ClipboardPush(ByteString) {}
-ByteString ClipboardPull() { return ""; }
-int GetModifiers() { return 0; }
-void SetCursorEnabled(int enabled) {}
-unsigned int GetTicks() { return 0; }
-
-static bool ReadFile(std::vector<char> &fileData, ByteString filename)
-{
-	std::ifstream f(filename, std::ios::binary);
-	if (f) f.seekg(0, std::ios::end);
-	if (f) fileData.resize(f.tellg());
-	if (f) f.seekg(0);
-	if (f) f.read(&fileData[0], fileData.size());
-	if (!f)
-	{
-		std::cerr << "ReadFile: " << filename << ": " << strerror(errno) << std::endl;
-		return false;
-	}
-	return true;
-}
 
 int main(int argc, char *argv[])
 {
@@ -46,16 +22,18 @@ int main(int argc, char *argv[])
 	auto inputFilename = ByteString(argv[1]);
 	auto outputFilename = ByteString(argv[2]) + ".png";
 
+	auto simulationData = std::make_unique<SimulationData>();
+
 	std::vector<char> fileData;
-	if (!ReadFile(fileData, inputFilename))
+	if (!Platform::ReadFile(fileData, inputFilename))
 	{
 		return 1;
 	}
 
-	GameSave * gameSave = NULL;
+	std::unique_ptr<GameSave> gameSave;
 	try
 	{
-		gameSave = new GameSave(fileData);
+		gameSave = std::make_unique<GameSave>(fileData, false);
 	}
 	catch (ParseException &e)
 	{
@@ -65,11 +43,11 @@ int main(int argc, char *argv[])
 	}
 
 	Simulation * sim = new Simulation();
-	Renderer * ren = new Renderer(new Graphics(), sim);
+	Renderer * ren = new Renderer(sim);
 
 	if (gameSave)
 	{
-		sim->Load(gameSave, true);
+		sim->Load(gameSave.get(), true, { 0, 0 });
 
 		//Render save
 		ren->decorations_enable = true;
@@ -81,19 +59,20 @@ int main(int argc, char *argv[])
 			frame--;
 			ren->render_parts();
 			ren->render_fire();
-			ren->clearScreen(1.0f);
+			ren->clearScreen();
 		}
 	}
 	else
 	{
-		int w = Graphics::textwidth("Save file invalid")+16, x = (XRES-w)/2, y = (YRES-24)/2;
-		ren->drawrect(x, y, w, 24, 192, 192, 192, 255);
-		ren->drawtext(x+8, y+8, "Save file invalid", 192, 192, 240, 255);
+		ren->clearScreen();
+		int w = Graphics::TextSize("Save file invalid").X + 15, x = (XRES-w)/2, y = (YRES-24)/2;
+		ren->DrawRect(RectSized(Vec2{ x, y }, Vec2{ w, 24 }), 0xC0C0C0_rgb);
+		ren->BlendText({ x+8, y+8 }, "Save file invalid", 0xC0C0F0_rgb .WithAlpha(255));
 	}
 
 	ren->RenderBegin();
 	ren->RenderEnd();
 
-	VideoBuffer screenBuffer = ren->DumpFrame();
-	screenBuffer.WritePNG(outputFilename);
+	if (auto data = ren->DumpFrame().ToPNG())
+		Platform::WriteFile(*data, outputFilename);
 }

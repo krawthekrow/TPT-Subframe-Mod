@@ -1,19 +1,14 @@
-#include "client/http/Request.h" // includes curl.h, needs to come first to silence a warning on windows
-
 #include "UpdateActivity.h"
-
-#include <bzlib.h>
-
-#include "Config.h"
-#include "Update.h"
-
-#include "client/Client.h"
-#include "common/Platform.h"
+#include "client/http/Request.h"
+#include "prefs/GlobalPrefs.h"
+#include "common/platform/Platform.h"
 #include "tasks/Task.h"
 #include "tasks/TaskWindow.h"
-
 #include "gui/dialogues/ConfirmPrompt.h"
 #include "gui/interface/Engine.h"
+#include "Config.h"
+#include <bzlib.h>
+#include <memory>
 
 class UpdateDownloadTask : public Task
 {
@@ -31,32 +26,49 @@ private:
 	}
 	bool doWork() override
 	{
-		String error;
-		http::Request *request = new http::Request(updateName);
+		auto &prefs = GlobalPrefs::Ref();
+
+		auto niceNotifyError = [this](String error) {
+			notifyError("Downloaded update is corrupted\n" + error);
+			return false;
+		};
+
+		auto request = std::make_unique<http::Request>(updateName);
 		request->Start();
 		notifyStatus("Downloading update");
 		notifyProgress(-1);
 		while(!request->CheckDone())
 		{
-			int total, done;
-			request->CheckProgress(&total, &done);
-			notifyProgress(total ? done * 100 / total : 0);
+			int64_t total, done;
+			std::tie(total, done) = request->CheckProgress();
+			if (total == -1)
+			{
+				notifyProgress(-1);
+			}
+			else
+			{
+				notifyProgress(total ? done * 100 / total : 0);
+			}
 			Platform::Millisleep(1);
 		}
 
 		int status;
-		ByteString data = request->Finish(&status);
+		ByteString data;
+		try
+		{
+			std::tie(status, data) = request->Finish();
+		}
+		catch (const http::RequestError &ex)
+		{
+			return niceNotifyError("Could not download update: " + String::Build("Server responded with Status ", ByteString(ex.what()).FromAscii()));
+		}
 		if (status!=200)
 		{
-			error = String::Build("Server responded with Status ", status);
-			notifyError("Could not download update: " + error);
-			return false;
+			return niceNotifyError("Could not download update: " + String::Build("Server responded with Status ", status));
 		}
 		if (!data.size())
 		{
-			error = "Server responded with nothing";
-			notifyError("Server did not return any data");
-			return false;
+			return niceNotifyError("Server did not return any data");
 		}
 
 		notifyStatus("Unpacking update");
@@ -66,13 +78,11 @@ private:
 
 		if(data.size()<16)
 		{
-			error = String::Build("Unsufficient data, got ", data.size(), " bytes");
-			goto corrupt;
+			return niceNotifyError(String::Build("Unsufficient data, got ", data.size(), " bytes"));
 		}
 		if (data[0]!=0x42 || data[1]!=0x75 || data[2]!=0x54 || data[3]!=0x54)
 		{
-			error = "Invalid update format";
-			goto corrupt;
+			return niceNotifyError("Invalid update format");
 		}
 
 		uncompressedLength  = (unsigned char)data[4];
@@ -80,51 +90,34 @@ private:
 		uncompressedLength |= ((unsigned char)data[6])<<16;
 		uncompressedLength |= ((unsigned char)data[7])<<24;
 
-		char * res;
-		res = (char *)malloc(uncompressedLength);
-		if (!res)
-		{
-			error = String::Build("Unable to allocate ", uncompressedLength, " bytes of memory for decompression");
-			goto corrupt;
-		}
+		std::vector<char> res(uncompressedLength);
 
 		int dstate;
-		dstate = BZ2_bzBuffToBuffDecompress((char *)res, (unsigned *)&uncompressedLength, &data[8], data.size()-8, 0, 0);
+		dstate = BZ2_bzBuffToBuffDecompress(&res[0], (unsigned *)&uncompressedLength, &data[8], data.size()-8, 0, 0);
 		if (dstate)
 		{
-			error = String::Build("Unable to decompress update: ", dstate);
-			free(res);
-			goto corrupt;
+			return niceNotifyError(String::Build("Unable to decompress update: ", dstate));
 		}
 
 		notifyStatus("Applying update");
 		notifyProgress(-1);
 
-		Client::Ref().SetPref("version.update", true);
-		if (update_start(res, uncompressedLength))
+		prefs.Set("version.update", true);
+		if (!Platform::UpdateStart(res))
 		{
-			Client::Ref().SetPref("version.update", false);
-			update_cleanup();
+			prefs.Set("version.update", false);
+			Platform::UpdateCleanup();
 			notifyError("Update failed - try downloading a new version.");
 			return false;
 		}
 
 		return true;
-
-	corrupt:
-		notifyError("Downloaded update is corrupted\n" + error);
-		return false;
 	}
 };
 
-UpdateActivity::UpdateActivity() {
-	ByteString file;
-#ifdef UPDATESERVER
-	file = ByteString::Build(SCHEME, UPDATESERVER, Client::Ref().GetUpdateInfo().File);
-#else
-	file = ByteString::Build(SCHEME, SERVER, Client::Ref().GetUpdateInfo().File);
-#endif
-	updateDownloadTask = new UpdateDownloadTask(file, this);
+UpdateActivity::UpdateActivity(UpdateInfo info)
+{
+	updateDownloadTask = new UpdateDownloadTask(info.file, this);
 	updateWindow = new TaskWindow("Downloading update...", updateDownloadTask, true);
 }
 
@@ -145,21 +138,25 @@ void UpdateActivity::Exit()
 
 void UpdateActivity::NotifyError(Task * sender)
 {
-#ifdef UPDATESERVER
-# define FIRST_LINE "Please go online to manually download a newer version.\n"
-#else
-# define FIRST_LINE "Please visit the website to download a newer version.\n"
-#endif
-	new ConfirmPrompt("Autoupdate failed", FIRST_LINE "Error: " + sender->GetError(), { [this] {
-#ifndef UPDATESERVER
-		Platform::OpenURI(SCHEME "powdertoy.co.uk/Download.html");
-#endif
+	StringBuilder sb;
+	if constexpr (USE_UPDATESERVER)
+	{
+		sb << "Please go online to manually download a newer version.\n";
+	}
+	else
+	{
+		sb << "Please visit the website to download a newer version.\n";
+	}
+	sb << "Error: " << sender->GetError();
+	new ConfirmPrompt("Autoupdate failed", sb.Build(), { [this] {
+		if constexpr (!USE_UPDATESERVER)
+		{
+			Platform::OpenURI(ByteString::Build(SCHEME, SERVER, "/Download.html"));
+		}
 		Exit();
 	}, [this] { Exit(); } });
-#undef FIRST_LINE
 }
 
 
 UpdateActivity::~UpdateActivity() {
 }
-

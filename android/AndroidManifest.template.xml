@@ -2,12 +2,12 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="@APPID@"
-	android:versionCode="1"
-	android:versionName="1.0"
+	android:versionCode="@BUILD_NUM@"
+	android:versionName="@DISPLAY_VERSION_MAJOR@.@DISPLAY_VERSION_MINOR@.@BUILD_NUM@"
 	android:installLocation="auto"
 >
 	<uses-sdk
-		android:minSdkVersion="19"
+		android:minSdkVersion="21"
 		android:targetSdkVersion="30"
 	/>
 	<uses-feature
@@ -33,16 +33,18 @@
 		android:name="android.hardware.type.pc"
 		android:required="false"
 	/>
-	<uses-permission android:name="android.permission.VIBRATE" />
+	@ANDROID_PERMISSIONS@
 	<application
 		android:label="@string/app_name"
 		android:icon="@mipmap/ic_launcher"
 		android:allowBackup="true"
 		android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
 		android:hardwareAccelerated="true"
+		@ANDROID_PROPERTIES@
 	>
 		<activity
 			android:name=".PowderActivity"
+			android:screenOrientation="landscape"
 			android:label="@string/app_name"
 			android:alwaysRetainTaskState="true"
 			android:launchMode="singleInstance"

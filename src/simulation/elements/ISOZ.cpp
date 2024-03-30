@@ -6,7 +6,7 @@ void Element::Element_ISOZ()
 {
 	Identifier = "DEFAULT_PT_ISOZ";
 	Name = "ISOZ";
-	Colour = PIXPACK(0xAA30D0);
+	Colour = 0xAA30D0_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;
@@ -49,11 +49,11 @@ void Element::Element_ISOZ()
 static int update(UPDATE_FUNC_ARGS)
 {
 	float rr, rrr;
-	if (RNG::Ref().chance(1, 200) && RNG::Ref().chance(int(-4.0f * sim->pv[y/CELL][x/CELL]), 1000))
+	if (sim->rng.chance(1, 200) && sim->rng.chance(int(-4.0f * sim->pv[y/CELL][x/CELL]), 1000))
 	{
 		sim->create_part(i, x, y, PT_PHOT);
-		rr = RNG::Ref().between(128, 355) / 127.0f;
-		rrr = RNG::Ref().between(0, 359) * 3.14159f / 180.0f;
+		rr = sim->rng.between(128, 355) / 127.0f;
+		rrr = sim->rng.between(0, 359) * 3.14159f / 180.0f;
 		parts[i].vx = rr*cosf(rrr);
 		parts[i].vy = rr*sinf(rrr);
 	}

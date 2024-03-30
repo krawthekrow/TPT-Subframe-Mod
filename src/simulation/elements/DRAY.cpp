@@ -6,7 +6,7 @@ void Element::Element_DRAY()
 {
 	Identifier = "DEFAULT_PT_DRAY";
 	Name = "DRAY";
-	Colour = PIXPACK(0xFFAA22);
+	Colour = 0xFFAA22_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_ELEC;
 	Enabled = 1;
@@ -32,6 +32,7 @@ void Element::Element_DRAY()
 	Description = "Duplicator ray. Replicates a line of particles in front of it.";
 
 	Properties = TYPE_SOLID;
+	CarriesTypeIn = 1U << FIELD_CTYPE;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;
@@ -47,14 +48,10 @@ void Element::Element_DRAY()
 	CtypeDraw = &Element::ctypeDrawVInCtype;
 }
 
-//should probably be in Simulation.h
-static bool InBounds(int x, int y)
-{
-	return (x>=0 && y>=0 && x<XRES && y<YRES);
-}
-
 static int update(UPDATE_FUNC_ARGS)
 {
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
 	int ctype = TYP(parts[i].ctype), ctypeExtra = ID(parts[i].ctype), copyLength = parts[i].tmp, copySpaces = parts[i].tmp2;
 	if (copySpaces < 0)
 		copySpaces = parts[i].tmp2 = 0;
@@ -67,7 +64,7 @@ static int update(UPDATE_FUNC_ARGS)
 	{
 		for (int ry = -1; ry <= 1; ry++)
 		{
-			if (BOUNDS_CHECK && (rx || ry))
+			if (rx || ry)
 			{
 				int r = pmap[y+ry][x+rx];
 				if (TYP(r) == PT_SPRK && parts[ID(r)].life == 3) //spark found, start creating
@@ -85,7 +82,7 @@ static int update(UPDATE_FUNC_ARGS)
 					for (int xStep = rx*-1, yStep = ry*-1, xCurrent = x+xStep, yCurrent = y+yStep; ; xCurrent+=xStep, yCurrent+=yStep)
 					{
 						// Out of bounds, stop looking and don't copy anything
-						if (!sim->InBounds(xCurrent, yCurrent))
+						if (!InBounds(xCurrent, yCurrent))
 							break;
 						int rr;
 						// haven't found a particle yet, keep looking for one
@@ -103,7 +100,7 @@ static int update(UPDATE_FUNC_ARGS)
 								foundParticle = true;
 						}
 						// now that it knows what kind of particle it is copying, do some extra stuff here so we can determine when to stop
-						if ((ctype && sim->elements[ctype].Properties&TYPE_ENERGY) || isEnergy)
+						if ((ctype && elements[ctype].Properties&TYPE_ENERGY) || isEnergy)
 							rr = sim->photons[yCurrent][xCurrent];
 						else
 							rr = pmap[yCurrent][xCurrent];

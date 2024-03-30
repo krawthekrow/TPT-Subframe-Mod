@@ -8,7 +8,7 @@ void Element::Element_GOLD()
 {
 	Identifier = "DEFAULT_PT_GOLD";
 	Name = "GOLD";
-	Colour = PIXPACK(0xDCAD2C);
+	Colour = 0xDCAD2C_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SOLIDS;
 	Enabled = 1;
@@ -51,17 +51,17 @@ void Element::Element_GOLD()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	int rx, ry, r, rndstore;
 	static int checkCoordsX[] = { -4, 4, 0, 0 };
 	static int checkCoordsY[] = { 0, 0, -4, 4 };
 	//Find nearby rusted iron (BMTL with tmp 1+)
-	for(int j = 0; j < 8; j++){
-		rndstore = RNG::Ref().gen();
-		rx = (rndstore % 9)-4;
+	for(int j = 0; j < 8; j++)
+	{
+		auto rndstore = sim->rng.gen();
+		auto rx = (rndstore % 9)-4;
 		rndstore >>= 4;
-		ry = (rndstore % 9)-4;
-		if ((!rx != !ry) && BOUNDS_CHECK) {
-			r = pmap[y+ry][x+rx];
+		auto ry = (rndstore % 9)-4;
+		if ((!rx != !ry)) {
+			auto r = pmap[y+ry][x+rx];
 			if(!r) continue;
 			if(TYP(r)==PT_BMTL && parts[ID(r)].tmp)
 			{
@@ -73,24 +73,23 @@ static int update(UPDATE_FUNC_ARGS)
 	//Find sparks
 	if(!parts[i].life)
 	{
-		for(int j = 0; j < 4; j++){
-			rx = checkCoordsX[j];
-			ry = checkCoordsY[j];
-			if (BOUNDS_CHECK) {
-				r = pmap[y+ry][x+rx];
-				if(!r) continue;
-				if(TYP(r)==PT_SPRK && parts[ID(r)].life && parts[ID(r)].life<4)
-				{
-					sim->part_change_type(i, x, y, PT_SPRK);
-					parts[i].life = 4;
-					parts[i].ctype = PT_GOLD;
-				}
+		for(int j = 0; j < 4; j++)
+		{
+			auto rx = checkCoordsX[j];
+			auto ry = checkCoordsY[j];
+			auto r = pmap[y+ry][x+rx];
+			if(!r) continue;
+			if(TYP(r)==PT_SPRK && parts[ID(r)].life && parts[ID(r)].life<4)
+			{
+				sim->part_change_type(i, x, y, PT_SPRK);
+				parts[i].life = 4;
+				parts[i].ctype = PT_GOLD;
 			}
 		}
 	}
 	if (TYP(sim->photons[y][x]) == PT_NEUT)
 	{
-		if (RNG::Ref().chance(1, 7))
+		if (sim->rng.chance(1, 7))
 		{
 			sim->kill_part(ID(sim->photons[y][x]));
 		}
@@ -100,7 +99,7 @@ static int update(UPDATE_FUNC_ARGS)
 
 static int graphics(GRAPHICS_FUNC_ARGS)
 {
-	int rndstore = RNG::Ref().gen();
+	int rndstore = gfctx.rng.gen();
 	*colr += (rndstore % 10) - 5;
 	rndstore >>= 4;
 	*colg += (rndstore % 10)- 5;

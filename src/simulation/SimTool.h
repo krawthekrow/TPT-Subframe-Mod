@@ -1,6 +1,4 @@
-#ifndef SIMTOOL_H
-#define SIMTOOL_H
-
+#pragma once
 #include "common/String.h"
 #include "graphics/Pixel.h"
 
@@ -11,7 +9,7 @@ class SimTool
 public:
 	ByteString Identifier;
 	String Name;
-	pixel Colour;
+	RGB<uint8_t> Colour;
 	String Description;
 
 	int (*Perform)(Simulation * sim, Particle * cpart, int x, int y, int brushX, int brushY, float strength);
@@ -22,5 +20,3 @@ public:
 #include "ToolNumbers.h"
 #undef TOOL_NUMBERS_DECLARE
 };
-
-#endif

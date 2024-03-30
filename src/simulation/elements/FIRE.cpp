@@ -1,7 +1,7 @@
-#include "common/tpt-minmax.h"
 #include "simulation/ElementCommon.h"
+#include "FIRE.h"
+#include <algorithm>
 
-int Element_FIRE_update(UPDATE_FUNC_ARGS);
 static int updateLegacy(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
 static void create(ELEMENT_CREATE_FUNC_ARGS);
@@ -10,7 +10,7 @@ void Element::Element_FIRE()
 {
 	Identifier = "DEFAULT_PT_FIRE";
 	Name = "FIRE";
-	Colour = PIXPACK(0xFF1000);
+	Colour = 0xFF1000_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_EXPLOSIVE;
 	Enabled = 1;
@@ -54,7 +54,9 @@ void Element::Element_FIRE()
 
 int Element_FIRE_update(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rt, t = parts[i].type;
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	int t = parts[i].type;
 	switch (t)
 	{
 	case PT_PLSM:
@@ -83,7 +85,7 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 			else if (parts[i].temp<625)
 			{
 				sim->part_change_type(i,x,y,PT_SMKE);
-				parts[i].life = RNG::Ref().between(250, 269);
+				parts[i].life = sim->rng.between(250, 269);
 			}
 		}
 		break;
@@ -97,43 +99,43 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 				break;
 			}
 
-			if (pres >= 25 && RNG::Ref().chance(1, 12500))
+			if (pres >= 25 && sim->rng.chance(1, 12500))
 			{
 				if (pres <= 50)
 				{
-					if (RNG::Ref().chance(1, 2))
+					if (sim->rng.chance(1, 2))
 						parts[i].ctype = PT_BRMT;
 					else
 						parts[i].ctype = PT_CNCT;
 				}
 				else if (pres <= 75)
 				{
-					if (pres >= 73 || RNG::Ref().chance(1, 8))
+					if (pres >= 73 || sim->rng.chance(1, 8))
 						parts[i].ctype = PT_GOLD;
 					else
 						parts[i].ctype = PT_QRTZ;
 				}
 				else if (pres <= 100 && parts[i].temp >= 5000)
 				{
-					if (RNG::Ref().chance(1, 5)) // 1 in 5 chance IRON to TTAN
+					if (sim->rng.chance(1, 5)) // 1 in 5 chance IRON to TTAN
 						parts[i].ctype = PT_TTAN;
 					else
 						parts[i].ctype = PT_IRON;
 				}
-				else if (parts[i].temp >= 5000 && RNG::Ref().chance(1, 5))
+				else if (parts[i].temp >= 5000 && sim->rng.chance(1, 5))
 				{
-					if (RNG::Ref().chance(1, 5))
+					if (sim->rng.chance(1, 5))
 						parts[i].ctype = PT_URAN;
-					else if (RNG::Ref().chance(1, 5))
+					else if (sim->rng.chance(1, 5))
 						parts[i].ctype = PT_PLUT;
 					else
 						parts[i].ctype = PT_TUNG;
 				}
 			}
 		}
-		else if ((parts[i].ctype == PT_STNE || !parts[i].ctype) && pres >= 30.0f && (parts[i].temp > sim->elements[PT_ROCK].HighTemperature || pres < sim->elements[PT_ROCK].HighPressure)) // Form ROCK with pressure, if it will stay molten or not immediately break
+		else if ((parts[i].ctype == PT_STNE || !parts[i].ctype) && pres >= 30.0f && (parts[i].temp > elements[PT_ROCK].HighTemperature || pres < elements[PT_ROCK].HighPressure)) // Form ROCK with pressure, if it will stay molten or not immediately break
 		{
-			parts[i].tmp2 = RNG::Ref().between(0, 10); // Provide tmp2 for color noise
+			parts[i].tmp2 = sim->rng.between(0, 10); // Provide tmp2 for color noise
 			parts[i].ctype = PT_ROCK;
 		}
 		break;
@@ -141,19 +143,21 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 	default:
 		break;
 	}
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				rt = TYP(r);
+				auto rt = TYP(r);
 
 				//THRM burning
 				if (rt==PT_THRM && (t==PT_FIRE || t==PT_PLSM || t==PT_LAVA))
 				{
-					if (RNG::Ref().chance(1, 500)) {
+					if (sim->rng.chance(1, 500)) {
 						sim->part_change_type(ID(r),x+rx,y+ry,PT_LAVA);
 						parts[ID(r)].ctype = PT_BMTL;
 						parts[ID(r)].temp = 3500.0f;
@@ -172,20 +176,20 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 				{
 					if ((t==PT_FIRE || t==PT_PLSM))
 					{
-						if (parts[ID(r)].life>100 && RNG::Ref().chance(1, 500))
+						if (parts[ID(r)].life>100 && sim->rng.chance(1, 500))
 						{
 							parts[ID(r)].life = 99;
 						}
 					}
 					else if (t==PT_LAVA)
 					{
-						if (parts[i].ctype == PT_IRON && RNG::Ref().chance(1, 500))
+						if (parts[i].ctype == PT_IRON && sim->rng.chance(1, 500))
 						{
 							parts[i].ctype = PT_METL;
 							sim->kill_part(ID(r));
 							continue;
 						}
-						if ((parts[i].ctype == PT_STNE || parts[i].ctype == PT_NONE) && RNG::Ref().chance(1, 60))
+						if ((parts[i].ctype == PT_STNE || parts[i].ctype == PT_NONE) && sim->rng.chance(1, 60))
 						{
 							parts[i].ctype = PT_SLCN;
 							sim->kill_part(ID(r));
@@ -200,7 +204,7 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 					if (parts[i].ctype == PT_QRTZ && rt == PT_LAVA && parts[ID(r)].ctype == PT_CLST)
 					{
 						float pres = std::max(sim->pv[y/CELL][x/CELL]*10.0f, 0.0f);
-						if (parts[i].temp >= pres+sim->elements[PT_CRMC].HighTemperature+50.0f)
+						if (parts[i].temp >= pres+elements[PT_CRMC].HighTemperature+50.0f)
 						{
 							parts[i].ctype = PT_CRMC;
 							parts[ID(r)].ctype = PT_CRMC;
@@ -208,7 +212,7 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 					}
 					else if (rt == PT_O2 && parts[i].ctype == PT_SLCN)
 					{
-						switch (RNG::Ref().between(0, 2))
+						switch (sim->rng.between(0, 2))
 						{
 						case 0:
 							parts[i].ctype = PT_SAND;
@@ -217,7 +221,7 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 						case 1:
 							parts[i].ctype = PT_CLST;
 							// avoid creating CRMC.
-							if (parts[i].temp >= sim->elements[PT_PQRT].HighTemperature * 3)
+							if (parts[i].temp >= elements[PT_PQRT].HighTemperature * 3)
 							{
 								parts[i].ctype = PT_PQRT;
 							}
@@ -239,14 +243,14 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 					}
 					else if (rt == PT_HEAC && parts[i].ctype == PT_HEAC)
 					{
-						if (parts[ID(r)].temp > sim->elements[PT_HEAC].HighTemperature)
+						if (parts[ID(r)].temp > elements[PT_HEAC].HighTemperature)
 						{
 							sim->part_change_type(ID(r), x+rx, y+ry, PT_LAVA);
 							parts[ID(r)].ctype = PT_HEAC;
 						}
 					}
 					else if (parts[i].ctype == PT_ROCK && rt == PT_LAVA && parts[ID(r)].ctype == PT_GOLD && parts[ID(r)].tmp == 0 &&
-						sim->pv[y / CELL][x / CELL] >= 50 && RNG::Ref().chance(1, 10000)) // Produce GOLD veins/clusters
+						sim->pv[y / CELL][x / CELL] >= 50 && sim->rng.chance(1, 10000)) // Produce GOLD veins/clusters
 					{
 						parts[i].ctype = PT_GOLD;
 						if (rx > 1 || rx < -1) // Trend veins vertical
@@ -258,21 +262,23 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 					}
 				}
 
-				if ((surround_space || sim->elements[rt].Explosive) &&
-				    sim->elements[rt].Flammable && RNG::Ref().chance(int(sim->elements[rt].Flammable + (sim->pv[(y+ry)/CELL][(x+rx)/CELL] * 10.0f)), 1000) &&
+				if ((surround_space || elements[rt].Explosive) &&
+				    elements[rt].Flammable && sim->rng.chance(int(elements[rt].Flammable + (sim->pv[(y+ry)/CELL][(x+rx)/CELL] * 10.0f)), 1000) &&
 				    //exceptions, t is the thing causing the spark and rt is what's burning
 				    (t != PT_SPRK || (rt != PT_RBDM && rt != PT_LRBD && rt != PT_INSL)) &&
 				    (t != PT_PHOT || rt != PT_INSL) &&
 				    (rt != PT_SPNG || parts[ID(r)].life == 0))
 				{
 					sim->part_change_type(ID(r), x+rx, y+ry, PT_FIRE);
-					parts[ID(r)].temp = restrict_flt(sim->elements[PT_FIRE].DefaultProperties.temp + (sim->elements[rt].Flammable/2), MIN_TEMP, MAX_TEMP);
-					parts[ID(r)].life = RNG::Ref().between(180, 259);
+					parts[ID(r)].temp = restrict_flt(elements[PT_FIRE].DefaultProperties.temp + (elements[rt].Flammable/2), MIN_TEMP, MAX_TEMP);
+					parts[ID(r)].life = sim->rng.between(180, 259);
 					parts[ID(r)].tmp = parts[ID(r)].ctype = 0;
-					if (sim->elements[rt].Explosive)
+					if (elements[rt].Explosive)
 						sim->pv[y/CELL][x/CELL] += 0.25f * CFDS;
 				}
 			}
+		}
+	}
 	if (sim->legacy_enable && t!=PT_SPRK) // SPRK has no legacy reactions
 		updateLegacy(UPDATE_FUNC_SUBCALL_ARGS);
 	return 0;
@@ -280,24 +286,28 @@ int Element_FIRE_update(UPDATE_FUNC_ARGS)
 
 static int updateLegacy(UPDATE_FUNC_ARGS)
 {
-	int r, rx, ry, rt, lpv, t = parts[i].type;
-	for (rx=-2; rx<3; rx++)
-		for (ry=-2; ry<3; ry++)
-			if (BOUNDS_CHECK && (rx || ry))
+	auto &sd = SimulationData::CRef();
+	auto &elements = sd.elements;
+	int t = parts[i].type;
+	for (auto rx = -2; rx <= 2; rx++)
+	{
+		for (auto ry = -2; ry <= 2; ry++)
+		{
+			if (rx || ry)
 			{
-				r = pmap[y+ry][x+rx];
+				auto r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
 				if (sim->bmap[(y+ry)/CELL][(x+rx)/CELL] && sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_STREAM)
 					continue;
-				rt = TYP(r);
+				auto rt = TYP(r);
 
-				lpv = (int)sim->pv[(y+ry)/CELL][(x+rx)/CELL];
+				auto lpv = (int)sim->pv[(y+ry)/CELL][(x+rx)/CELL];
 				if (lpv < 1) lpv = 1;
-				if (sim->elements[rt].Meltable &&
+				if (elements[rt].Meltable &&
 				        ((rt!=PT_RBDM && rt!=PT_LRBD) || t!=PT_SPRK)
 				        && ((t!=PT_FIRE&&t!=PT_PLSM) || (rt!=PT_METL && rt!=PT_IRON && rt!=PT_ETRD && rt!=PT_PSCN && rt!=PT_NSCN && rt!=PT_NTCT && rt!=PT_PTCT && rt!=PT_BMTL && rt!=PT_BRMT && rt!=PT_SALT && rt!=PT_INWR))
-				        && RNG::Ref().chance(sim->elements[rt].Meltable*lpv, 1000))
+				        && sim->rng.chance(elements[rt].Meltable*lpv, 1000))
 				{
 					if (t!=PT_LAVA || parts[i].life>0)
 					{
@@ -308,7 +318,7 @@ static int updateLegacy(UPDATE_FUNC_ARGS)
 						else
 							parts[ID(r)].ctype = rt;
 						sim->part_change_type(ID(r),x+rx,y+ry,PT_LAVA);
-						parts[ID(r)].life = RNG::Ref().between(240, 359);
+						parts[ID(r)].life = sim->rng.between(240, 359);
 					}
 					else
 					{
@@ -348,15 +358,17 @@ static int updateLegacy(UPDATE_FUNC_ARGS)
 					}
 				}
 			}
+		}
+	}
 	return 0;
 }
 
 static int graphics(GRAPHICS_FUNC_ARGS)
 {
-	auto color = Renderer::flameTableAt(cpart->life);
-	*colr = PIXR(color);
-	*colg = PIXG(color);
-	*colb = PIXB(color);
+	RGB<uint8_t> color = Renderer::flameTableAt(cpart->life);
+	*colr = color.Red;
+	*colg = color.Green;
+	*colb = color.Blue;
 
 	*firea = 255;
 	*firer = *colr;
@@ -371,5 +383,5 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	sim->parts[i].life = RNG::Ref().between(120, 169);
+	sim->parts[i].life = sim->rng.between(120, 169);
 }

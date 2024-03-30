@@ -1,9 +1,6 @@
-#ifndef CHECKBOX_H_
-#define CHECKBOX_H_
-
+#pragma once
 #include "common/String.h"
 #include "Component.h"
-
 #include <functional>
 
 namespace ui
@@ -38,5 +35,3 @@ public:
 	void SetChecked(bool checked_) { checked = checked_; }
 };
 }
-
-#endif /* CHECKBOX_H_ */

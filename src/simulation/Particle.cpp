@@ -1,5 +1,6 @@
-#include <cstddef>
 #include "Particle.h"
+#include <cstddef>
+#include <cassert>
 
 std::vector<StructProperty> const &Particle::GetProperties()
 {
@@ -30,4 +31,32 @@ std::vector<StructPropertyAlias> const &Particle::GetPropertyAliases()
 		{ "dcolor", "dcolour" },
 	};
 	return aliases;
+}
+
+std::vector<unsigned int> const &Particle::PossiblyCarriesType()
+{
+	struct DoOnce
+	{
+		std::vector<unsigned int> indices = {
+			FIELD_LIFE,
+			FIELD_CTYPE,
+			FIELD_TMP,
+			FIELD_TMP2,
+			FIELD_TMP3,
+			FIELD_TMP4,
+		};
+
+		DoOnce()
+		{
+			auto &properties = GetProperties();
+			for (auto index : indices)
+			{
+				// code that depends on PossiblyCarriesType only knows how to set ints
+				assert(properties[index].Type == StructProperty::Integer ||
+				       properties[index].Type == StructProperty::ParticleType);
+			}
+		}
+	};
+	static DoOnce doOnce;
+	return doOnce.indices;
 }

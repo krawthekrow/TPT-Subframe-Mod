@@ -3,7 +3,7 @@
 #include "client/Client.h"
 #include "client/GameSave.h"
 #include "client/ThumbnailRendererTask.h"
-#include "common/Platform.h"
+#include "common/platform/Platform.h"
 #include "graphics/Graphics.h"
 #include "gui/Style.h"
 
@@ -13,23 +13,21 @@
 #include "gui/interface/Label.h"
 #include "gui/interface/Textbox.h"
 
-#include "save_local.png.h"
+#include "Config.h"
 
-LocalSaveActivity::LocalSaveActivity(SaveFile save, OnSaved onSaved_) :
+LocalSaveActivity::LocalSaveActivity(std::unique_ptr<SaveFile> newSave, OnSaved onSaved_) :
 	WindowActivity(ui::Point(-1, -1), ui::Point(220, 200)),
-	save(save),
+	save(std::move(newSave)),
 	thumbnailRenderer(nullptr),
 	onSaved(onSaved_)
 {
-	PngDataToPixels(save_to_disk_image, save_to_disk_imageW, save_to_disk_imageH, reinterpret_cast<const char *>(save_local_png), save_local_png_size, false);
-
 	ui::Label * titleLabel = new ui::Label(ui::Point(4, 5), ui::Point(Size.X-8, 16), "Save to computer:");
 	titleLabel->SetTextColour(style::Colour::InformationTitle);
 	titleLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	titleLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(titleLabel);
 
-	filenameField = new ui::Textbox(ui::Point(8, 25), ui::Point(Size.X-16, 16), save.GetDisplayName(), "[filename]");
+	filenameField = new ui::Textbox(ui::Point(8, 25), ui::Point(Size.X-16, 16), save->GetDisplayName(), "[filename]");
 	filenameField->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	filenameField->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	AddComponent(filenameField);
@@ -55,9 +53,9 @@ LocalSaveActivity::LocalSaveActivity(SaveFile save, OnSaved onSaved_) :
 	AddComponent(okayButton);
 	SetOkayButton(okayButton);
 
-	if(save.GetGameSave())
+	if(save->GetGameSave())
 	{
-		thumbnailRenderer = new ThumbnailRendererTask(save.GetGameSave(), Size.X-16, -1, false, true, false);
+		thumbnailRenderer = new ThumbnailRendererTask(*save->GetGameSave(), Size - Vec2(16, 16), true, false);
 		thumbnailRenderer->Start();
 	}
 }
@@ -83,9 +81,9 @@ void LocalSaveActivity::Save()
 	}
 	else if (filenameField->GetText().length())
 	{
-		ByteString finalFilename = ByteString(LOCAL_SAVE_DIR) + ByteString(PATH_SEP) + filenameField->GetText().ToUtf8() + ".cps";
-		save.SetDisplayName(filenameField->GetText());
-		save.SetFileName(finalFilename);
+		ByteString finalFilename = ByteString::Build(LOCAL_SAVE_DIR, PATH_SEP_CHAR, filenameField->GetText().ToUtf8(), ".cps");
+		save->SetDisplayName(filenameField->GetText());
+		save->SetFileName(finalFilename);
 		if (Platform::FileExists(finalFilename))
 		{
 			new ConfirmPrompt("Overwrite file", "Are you sure you wish to overwrite\n"+finalFilename.FromUtf8(), { [this, finalFilename] {
@@ -106,16 +104,19 @@ void LocalSaveActivity::Save()
 void LocalSaveActivity::saveWrite(ByteString finalFilename)
 {
 	Platform::MakeDirectory(LOCAL_SAVE_DIR);
-	GameSave *gameSave = save.GetGameSave();
 	Json::Value localSaveInfo;
 	localSaveInfo["type"] = "localsave";
 	localSaveInfo["username"] = Client::Ref().GetAuthUser().Username;
 	localSaveInfo["title"] = finalFilename;
 	localSaveInfo["date"] = (Json::Value::UInt64)time(NULL);
 	Client::Ref().SaveAuthorInfo(&localSaveInfo);
-	gameSave->authors = localSaveInfo;
-	auto [ fromNewerVersion, saveData ] = gameSave->Serialise();
-	(void)fromNewerVersion;
+	{
+		auto gameSave = save->TakeGameSave();
+		gameSave->authors = localSaveInfo;
+		save->SetGameSave(std::move(gameSave));
+	}
+	std::vector<char> saveData;
+	std::tie(std::ignore, saveData) = save->GetGameSave()->Serialise();
 	if (saveData.size() == 0)
 		new ErrorMessage("Error", "Unable to serialize game data.");
 	else if (!Platform::WriteFile(saveData, finalFilename))
@@ -124,7 +125,7 @@ void LocalSaveActivity::saveWrite(ByteString finalFilename)
 	{
 		if (onSaved)
 		{
-			onSaved(&save);
+			onSaved(std::move(save));
 		}
 		Exit();
 	}
@@ -133,14 +134,15 @@ void LocalSaveActivity::saveWrite(ByteString finalFilename)
 void LocalSaveActivity::OnDraw()
 {
 	Graphics * g = GetGraphics();
-	g->draw_rgba_image(&save_to_disk_image[0], save_to_disk_imageW, save_to_disk_imageH, 0, 0, 0.7f);
-	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
-	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
+	g->BlendRGBAImage(saveToDiskImage->data(), RectSized(Vec2(0, 0), saveToDiskImage->Size()));
+	g->DrawFilledRect(RectSized(Position, Size).Inset(-1), 0x000000_rgb);
+	g->DrawRect(RectSized(Position, Size), 0xFFFFFF_rgb);
 
-	if(thumbnail)
+	if (thumbnail)
 	{
-		g->draw_image(thumbnail.get(), Position.X+(Size.X-thumbnail->Width)/2, Position.Y+45, 255);
-		g->drawrect(Position.X+(Size.X-thumbnail->Width)/2, Position.Y+45, thumbnail->Width, thumbnail->Height, 180, 180, 180, 255);
+		auto rect = RectSized(Position + Vec2((Size.X - thumbnail->Size().X) / 2, 45), thumbnail->Size());
+		g->BlendImage(thumbnail->Data(), 0xFF, rect);
+		g->DrawRect(rect, 0xB4B4B4_rgb);
 	}
 }
 

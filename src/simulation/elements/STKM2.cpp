@@ -1,18 +1,16 @@
 #include "simulation/ElementCommon.h"
+#include "STKM.h"
 
 static int update(UPDATE_FUNC_ARGS);
 static void create(ELEMENT_CREATE_FUNC_ARGS);
 static bool createAllowed(ELEMENT_CREATE_ALLOWED_FUNC_ARGS);
 static void changeType(ELEMENT_CHANGETYPE_FUNC_ARGS);
-int Element_STKM_graphics(GRAPHICS_FUNC_ARGS);
-void Element_STKM_init_legs(Simulation * sim, playerst *playerp, int i);
-int Element_STKM_run_stickman(playerst *playerp, UPDATE_FUNC_ARGS);
 
 void Element::Element_STKM2()
 {
 	Identifier = "DEFAULT_PT_STKM2";
 	Name = "STK2";
-	Colour = PIXPACK(0x6464FF);
+	Colour = 0x6464FF_rgb;
 	MenuVisible = 1;
 	MenuSection = SC_SPECIAL;
 	Enabled = 1;
@@ -40,6 +38,7 @@ void Element::Element_STKM2()
 	Description = "Second stickman. Don't kill him! Control with wasd.";
 
 	Properties = PROP_NOCTYPEDRAW;
+	CarriesTypeIn = 1U << FIELD_CTYPE;
 
 	LowPressure = IPL;
 	LowPressureTransition = NT;

@@ -1,158 +1,70 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
+#include "VcsTag.h"
+#include "common/Version.h"
 
-#mesondefine CURL_STATICLIB
-#mesondefine ZLIB_WINAPI
+constexpr bool SET_WINDOW_ICON          = @SET_WINDOW_ICON@;
+constexpr bool DEBUG                    = @DEBUG@;
+constexpr bool X86                      = @X86@;
+constexpr bool BETA                     = @BETA@;
+constexpr bool SNAPSHOT                 = @SNAPSHOT@;
+constexpr bool MOD                      = @MOD@;
+constexpr bool NOHTTP                   = @NOHTTP@;
+constexpr bool LUACONSOLE               = @LUACONSOLE@;
+constexpr bool ALLOW_FAKE_NEWER_VERSION = @ALLOW_FAKE_NEWER_VERSION@;
+constexpr bool USE_UPDATESERVER         = @USE_UPDATESERVER@;
+constexpr bool CAN_INSTALL              = @CAN_INSTALL@;
+constexpr bool USE_BLUESCREEN           = @USE_BLUESCREEN@;
+constexpr bool INSTALL_CHECK            = @INSTALL_CHECK@;
+constexpr bool IGNORE_UPDATES           = @IGNORE_UPDATES@;
+constexpr bool ENFORCE_HTTPS            = @ENFORCE_HTTPS@;
+constexpr bool SECURE_CIPHERS_ONLY      = @SECURE_CIPHERS_ONLY@;
+constexpr bool PLATFORM_CLIPBOARD       = @PLATFORM_CLIPBOARD@;
+constexpr bool USE_SYSTEM_CERT_PROVIDER = @USE_SYSTEM_CERT_PROVIDER@;
+constexpr bool FFTW_PLAN_MEASURE        = @FFTW_PLAN_MEASURE@;
+constexpr bool ALLOW_QUIT               = @ALLOW_QUIT@;
+constexpr bool DEFAULT_TOUCH_UI         = @DEFAULT_TOUCH_UI@;
+constexpr bool ALLOW_DATA_FOLDER        = @ALLOW_DATA_FOLDER@;
+constexpr char PATH_SEP_CHAR            = '@PATH_SEP_CHAR@';
 
-#mesondefine LUACONSOLE
-#mesondefine NOHTTP
-#mesondefine GRAVFFT
-#mesondefine RENDERER
-#mesondefine FONTEDITOR
+enum ForceWindowFrameOps
+{
+	forceWindowFrameOpsNone, // usual behaviour
+	forceWindowFrameOpsEmbedded, // e.g. into a webpage; this sweeps a few emscripten limitations under the rug
+	forceWindowFrameOpsHandheld, // e.g. the system doesn't support windowed mode; includes odd setups like chromebooks
+};
+constexpr ForceWindowFrameOps FORCE_WINDOW_FRAME_OPS = @FORCE_WINDOW_FRAME_OPS@;
 
-#mesondefine BETA
-#mesondefine DEBUG
-#mesondefine IGNORE_UPDATES
-#mesondefine LIN
-#mesondefine AND
-#mesondefine NO_INSTALL_CHECK
-#mesondefine SNAPSHOT
-#mesondefine WIN
-#mesondefine MACOSX
-#mesondefine X86
-#mesondefine X86_SSE
-#mesondefine X86_SSE2
-#mesondefine X86_SSE3
-#mesondefine _64BIT
-#mesondefine SERVER
-#mesondefine STATICSERVER
-#mesondefine UPDATESERVER
-#mesondefine IDENT_PLATFORM
-#mesondefine IDENT
-#mesondefine ENFORCE_HTTPS
-#define APPNAME "@APPNAME@"
-#define APPCOMMENT "@APPCOMMENT@"
-#define APPEXE "@APPEXE@"
-#define APPID "@APPID@"
-#define APPDATA "@APPDATA@"
-#define APPVENDOR "@APPVENDOR@"
+constexpr char SERVER[]         = "@SERVER@";
+constexpr char STATICSERVER[]   = "@STATICSERVER@";
+constexpr char UPDATESERVER[]   = "@UPDATESERVER@";
+constexpr char IDENT_PLATFORM[] = "@IDENT_PLATFORM@";
+constexpr char IDENT[]          = "@IDENT@";
+constexpr char APPNAME[]        = "@APPNAME@";
+constexpr char APPCOMMENT[]     = "@APPCOMMENT@";
+constexpr char APPEXE[]         = "@APPEXE@";
+constexpr char APPID[]          = "@APPID@";
+constexpr char APPDATA[]        = "@APPDATA@";
+constexpr char APPVENDOR[]      = "@APPVENDOR@";
 
-#ifdef WIN
-# define PATH_SEP "\\"
-# define PATH_SEP_CHAR '\\'
-#else
-# define PATH_SEP "/"
-# define PATH_SEP_CHAR '/'
-#endif
+constexpr int MOD_ID               = @MOD_ID@;
 
-//VersionInfoStart
-#define SAVE_VERSION 97
-#define MINOR_VERSION 0
-#define BUILD_NUM 352
-#mesondefine SNAPSHOT_ID
-#mesondefine MOD_ID
-#define FUTURE_SAVE_VERSION 97
-#define FUTURE_MINOR_VERSION 0
+struct DisplayVersionWithBuild
+{
+	Version<2> displayVersion;
+	size_t build;
+};
+constexpr DisplayVersionWithBuild APP_VERSION = { { @DISPLAY_VERSION_MAJOR@, @DISPLAY_VERSION_MINOR@ }, @BUILD_NUM@ };
+constexpr DisplayVersionWithBuild UPSTREAM_VERSION = { { @UPSTREAM_VERSION_MAJOR@, @UPSTREAM_VERSION_MINOR@ }, @UPSTREAM_BUILD_NUM@ };
 
-#if !(defined(SNAPSHOT) || defined(BETA) || defined(DEBUG) || MOD_ID > 0)
-#undef FUTURE_SAVE_VERSION
-#undef FUTURE_MINOR_VERSION
-#endif
-//VersionInfoEnd
+constexpr auto DISPLAY_VERSION = APP_VERSION.displayVersion;
 
-#if !(defined(MACOSX) && defined(DEBUG))
-#define HIGH_QUALITY_RESAMPLE			//High quality image resampling, slower but much higher quality than my terribad linear interpolation
-#endif
+constexpr char IDENT_RELTYPE    = SNAPSHOT ? 'S' : (BETA ? 'B' : 'R');
 
-#if defined(SNAPSHOT)
-#define IDENT_RELTYPE "S"
-#elif defined(BETA)
-#define IDENT_RELTYPE "B"
-#else
-#define IDENT_RELTYPE "R"
-#endif
+constexpr char SCHEME[]         = "https://";
+constexpr char STATICSCHEME[]   = "https://";
+constexpr char LOCAL_SAVE_DIR[] = "Saves";
+constexpr char STAMPS_DIR[]     = "stamps";
+constexpr char BRUSH_DIR[]      = "Brushes";
 
-#if defined(X86_SSE3)
-#define IDENT_BUILD "SSE3"
-#elif defined(X86_SSE2)
-#define IDENT_BUILD "SSE2"
-#elif defined(X86_SSE)
-#define IDENT_BUILD "SSE"
-#else
-#define IDENT_BUILD "NO"
-#endif
-
-#define MTOS_EXPAND(str) #str
-#define MTOS(str) MTOS_EXPAND(str)
-
-#define SCHEME "https://"
-#define STATICSCHEME "https://"
-
-#define LOCAL_SAVE_DIR "Saves"
-
-#define STAMPS_DIR "stamps"
-
-#define BRUSH_DIR "Brushes"
-
-#ifndef M_GRAV
-#define M_GRAV 6.67300e-1
-#endif
-
-#ifdef RENDERER
-#define MENUSIZE 0
-#define BARSIZE 0
-#else
-#define MENUSIZE 40
-#define BARSIZE 17
-#endif
-#define XRES	612
-#define YRES	384
-#define NPART XRES*YRES
-
-#define XCNTR   XRES/2
-#define YCNTR   YRES/2
-
-#define WINDOWW (XRES+BARSIZE)
-#define WINDOWH (YRES+MENUSIZE)
-
-#define GRAV_DIFF
-
-#define MAXSIGNS 16
-
-//CELL, the size of the pressure, gravity, and wall maps. Larger than 1 to prevent extreme lag
-#define CELL	4
-#define ISTP	(CELL/2)
-#define CFDS	(4.0f/CELL)
-#define SIM_MAXVELOCITY 1e4f
-
-//Air constants
-#define AIR_TSTEPP 0.3f
-#define AIR_TSTEPV 0.4f
-#define AIR_VADV 0.3f
-#define AIR_VLOSS 0.999f
-#define AIR_PLOSS 0.9999f
-
-#define NGOL 24
-
-#define CIRCLE_BRUSH 0
-#define SQUARE_BRUSH 1
-#define TRI_BRUSH 2
-#define BRUSH_NUM 3
-
-//Photon constants
-#define SURF_RANGE		10
-#define NORMAL_MIN_EST	3
-#define NORMAL_INTERP	20
-#define NORMAL_FRAC		16
-
-#define REFRACT			0x80000000
-
-/* heavy flint glass, for awesome refraction/dispersion
-   this way you can make roof prisms easily */
-#define GLASS_IOR		1.9
-#define GLASS_DISP		0.07
-
-#define SDEUT
-#define R_TEMP 22
-
-#endif /* CONFIG_H */
+constexpr int httpMaxConcurrentStreams = 50;
+constexpr int httpConnectTimeoutS      = 15;

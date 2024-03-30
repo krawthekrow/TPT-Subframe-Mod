@@ -1,95 +1,59 @@
 #include "Tool.h"
 
+#include "graphics/Graphics.h"
 #include "gui/game/Brush.h"
 
 #include "simulation/Simulation.h"
 #include "simulation/SimulationData.h"
 #include "simulation/ElementClasses.h"
 
-Tool::Tool(int id, String name, String description, int r, int g, int b, ByteString identifier, VideoBuffer * (*textureGen)(int, int, int)):
-	textureGen(textureGen),
-	toolID(id),
-	toolName(name),
-	toolDescription(description),
-	strength(1.0f),
-	blocky(false),
-	identifier(identifier),
-	colRed(r),
-	colGreen(g),
-	colBlue(b)
+std::unique_ptr<VideoBuffer> Tool::GetTexture(Vec2<int> size)
 {
+	return textureGen ? textureGen(ToolID, size) : nullptr;
 }
 
-VideoBuffer * Tool::GetTexture(int width, int height)
-{
-	if(textureGen)
-	{
-		return textureGen(toolID, width, height);
-	}
-	return NULL;
+void Tool::Click(Simulation * sim, Brush const &brush, ui::Point position) { }
+void Tool::Draw(Simulation * sim, Brush const &brush, ui::Point position) {
+	sim->ToolBrush(position.X, position.Y, ToolID, brush, Strength);
 }
-void Tool::SetTextureGen(VideoBuffer * (*textureGen)(int, int, int))
-{
-	this->textureGen = textureGen;
+void Tool::DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging) {
+	sim->ToolLine(position1.X, position1.Y, position2.X, position2.Y, ToolID, brush, Strength);
 }
-ByteString Tool::GetIdentifier() { return identifier; }
-String Tool::GetName() { return toolName; }
-String Tool::GetDescription() { return toolDescription; }
-Tool::~Tool() {}
-
-void Tool::Click(Simulation * sim, Brush * brush, ui::Point position) { }
-void Tool::Draw(Simulation * sim, Brush * brush, ui::Point position) {
-	sim->ToolBrush(position.X, position.Y, toolID, brush, strength);
+void Tool::DrawRect(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2) {
+	sim->ToolBox(position1.X, position1.Y, position2.X, position2.Y, ToolID, Strength);
 }
-void Tool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging) {
-	sim->ToolLine(position1.X, position1.Y, position2.X, position2.Y, toolID, brush, strength);
-}
-void Tool::DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2) {
-	sim->ToolBox(position1.X, position1.Y, position2.X, position2.Y, toolID, strength);
-}
-void Tool::DrawFill(Simulation * sim, Brush * brush, ui::Point position) {}
+void Tool::DrawFill(Simulation * sim, Brush const &brush, ui::Point position) {}
 
 
-ElementTool::ElementTool(int id, String name, String description, int r, int g, int b, ByteString identifier, VideoBuffer * (*textureGen)(int, int, int)):
-	Tool(id, name, description, r, g, b, identifier, textureGen)
-{
+void ElementTool::Draw(Simulation * sim, Brush const &brush, ui::Point position){
+	sim->CreateParts(position.X, position.Y, ToolID, brush);
 }
-ElementTool::~ElementTool() {}
-void ElementTool::Draw(Simulation * sim, Brush * brush, ui::Point position){
-	sim->CreateParts(position.X, position.Y, toolID, brush);
+void ElementTool::DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging) {
+	sim->CreateLine(position1.X, position1.Y, position2.X, position2.Y, ToolID, brush);
 }
-void ElementTool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging) {
-	sim->CreateLine(position1.X, position1.Y, position2.X, position2.Y, toolID, brush);
+void ElementTool::DrawRect(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2) {
+	sim->CreateBox(position1.X, position1.Y, position2.X, position2.Y, ToolID);
 }
-void ElementTool::DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2) {
-	sim->CreateBox(position1.X, position1.Y, position2.X, position2.Y, toolID);
-}
-void ElementTool::DrawFill(Simulation * sim, Brush * brush, ui::Point position) {
-	sim->FloodParts(position.X, position.Y, toolID, -1);
+void ElementTool::DrawFill(Simulation * sim, Brush const &brush, ui::Point position) {
+	sim->FloodParts(position.X, position.Y, ToolID, -1);
 }
 
 
-WallTool::WallTool(int id, String name, String description, int r, int g, int b, ByteString identifier, VideoBuffer * (*textureGen)(int, int, int)):
-Tool(id, name, description, r, g, b, identifier, textureGen)
-{
-	blocky = true;
+void WallTool::Draw(Simulation * sim, Brush const &brush, ui::Point position) {
+	sim->CreateWalls(position.X, position.Y, 1, 1, ToolID, &brush);
 }
-WallTool::~WallTool() {}
-void WallTool::Draw(Simulation * sim, Brush * brush, ui::Point position) {
-	sim->CreateWalls(position.X, position.Y, 1, 1, toolID, brush);
-}
-void WallTool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging) {
+void WallTool::DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging) {
 	int wallX = position1.X/CELL;
 	int wallY = position1.Y/CELL;
-	if(dragging == false && toolID == WL_FAN && sim->bmap[wallY][wallX]==WL_FAN)
+	if(dragging == false && ToolID == WL_FAN && sim->bmap[wallY][wallX]==WL_FAN)
 	{
 		float newFanVelX = (position2.X-position1.X)*0.005f;
-		newFanVelX *= strength;
+		newFanVelX *= Strength;
 		float newFanVelY = (position2.Y-position1.Y)*0.005f;
-		newFanVelY *= strength;
+		newFanVelY *= Strength;
 		sim->FloodWalls(position1.X, position1.Y, WL_FLOODHELPER, WL_FAN);
-		for (int j = 0; j < YRES/CELL; j++)
-			for (int i = 0; i < XRES/CELL; i++)
+		for (int j = 0; j < YCELLS; j++)
+			for (int i = 0; i < XCELLS; i++)
 				if (sim->bmap[j][i] == WL_FLOODHELPER)
 				{
 					sim->fvx[j][i] = newFanVelX;
@@ -99,69 +63,52 @@ void WallTool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui
 	}
 	else
 	{
-		sim->CreateWallLine(position1.X, position1.Y, position2.X, position2.Y, 1, 1, toolID, brush);
+		sim->CreateWallLine(position1.X, position1.Y, position2.X, position2.Y, 1, 1, ToolID, &brush);
 	}
 }
-void WallTool::DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2) {
-	sim->CreateWallBox(position1.X, position1.Y, position2.X, position2.Y, toolID);
+void WallTool::DrawRect(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2) {
+	sim->CreateWallBox(position1.X, position1.Y, position2.X, position2.Y, ToolID);
 }
-void WallTool::DrawFill(Simulation * sim, Brush * brush, ui::Point position) {
-	if (toolID != WL_STREAM)
-		sim->FloodWalls(position.X, position.Y, toolID, -1);
+void WallTool::DrawFill(Simulation * sim, Brush const &brush, ui::Point position) {
+	if (ToolID != WL_STREAM)
+		sim->FloodWalls(position.X, position.Y, ToolID, -1);
 }
 
-WindTool::WindTool(int id, String name, String description, int r, int g, int b, ByteString identifier, VideoBuffer * (*textureGen)(int, int, int)):
-	Tool(id, name, description, r, g, b, identifier, textureGen)
+void WindTool::DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging)
 {
-}
-
-void WindTool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging)
-{
-	int radiusX, radiusY, sizeX, sizeY;
-
 	float strength = dragging?0.01f:0.002f;
-	strength *= this->strength;
+	strength *= this->Strength;
 
-	radiusX = brush->GetRadius().X;
-	radiusY = brush->GetRadius().Y;
-
-	sizeX = brush->GetSize().X;
-	sizeY = brush->GetSize().Y;
-
-	unsigned char *bitmap = brush->GetBitmap();
-
-	for(int y = 0; y < sizeY; y++)
+	for (ui::Point off : brush)
 	{
-		for(int x = 0; x < sizeX; x++)
+		ui::Point coords = position1 + off;
+		if (coords.X >= 0 && coords.Y >= 0 && coords.X < XRES && coords.Y < YRES)
 		{
-			if(bitmap[(y*sizeX)+x] && (position1.X+(x-radiusX) >= 0 && position1.Y+(y-radiusY) >= 0 && position1.X+(x-radiusX) < XRES && position1.Y+(y-radiusY) < YRES))
-			{
-				sim->vx[(position1.Y+(y-radiusY))/CELL][(position1.X+(x-radiusX))/CELL] += (position2.X-position1.X)*strength;
-				sim->vy[(position1.Y+(y-radiusY))/CELL][(position1.X+(x-radiusX))/CELL] += (position2.Y-position1.Y)*strength;
-			}
+			sim->vx[coords.Y / CELL][coords.X / CELL] += (position2 - position1).X * strength;
+			sim->vy[coords.Y / CELL][coords.X / CELL] += (position2 - position1).Y * strength;
 		}
 	}
 }
 
 
-void Element_LIGH_Tool::DrawLine(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2, bool dragging)
+void Element_LIGH_Tool::DrawLine(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2, bool dragging)
 {
 	if (dragging)
-		sim->CreateParts(position1.X, position1.Y, brush->GetRadius().X, brush->GetRadius().Y, PT_LIGH);
+		sim->CreateParts(position1.X, position1.Y, brush.GetRadius().X, brush.GetRadius().Y, PT_LIGH);
 }
 
 
-void Element_TESC_Tool::DrawRect(Simulation * sim, Brush * brush, ui::Point position1, ui::Point position2) {
-	int radiusInfo = brush->GetRadius().X*4+brush->GetRadius().Y*4+7;
-	sim->CreateBox(position1.X, position1.Y, position2.X, position2.Y, toolID | PMAPID(radiusInfo));
+void Element_TESC_Tool::DrawRect(Simulation * sim, Brush const &brush, ui::Point position1, ui::Point position2) {
+	int radiusInfo = brush.GetRadius().X*4+brush.GetRadius().Y*4+7;
+	sim->CreateBox(position1.X, position1.Y, position2.X, position2.Y, ToolID | PMAPID(radiusInfo));
 }
-void Element_TESC_Tool::DrawFill(Simulation * sim, Brush * brush, ui::Point position) {
-	int radiusInfo = brush->GetRadius().X*4+brush->GetRadius().Y*4+7;
-	sim->FloodParts(position.X, position.Y, toolID | PMAPID(radiusInfo), -1);
+void Element_TESC_Tool::DrawFill(Simulation * sim, Brush const &brush, ui::Point position) {
+	int radiusInfo = brush.GetRadius().X*4+brush.GetRadius().Y*4+7;
+	sim->FloodParts(position.X, position.Y, ToolID | PMAPID(radiusInfo), -1);
 }
 
 
-void PlopTool::Click(Simulation * sim, Brush * brush, ui::Point position)
+void PlopTool::Click(Simulation * sim, Brush const &brush, ui::Point position)
 {
-	sim->create_part(-2, position.X, position.Y, TYP(toolID), ID(toolID));
+	sim->create_part(-2, position.X, position.Y, TYP(ToolID), ID(ToolID));
 }

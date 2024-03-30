@@ -18,10 +18,11 @@ option(
 	description: 'Don\'t show notifications about available updates'
 )
 option(
-	'install_check',
-	type: 'boolean',
-	value: false,
-	description: 'Do install check on startup'
+	'can_install',
+	type: 'combo',
+	choices: [ 'no', 'yes', 'yes_check', 'auto' ],
+	value: 'auto',
+	description: 'Disable (\'no\') or enable (\'yes\') setting up file and URL associations, or even offer to do it at startup (\'yes_check\')'
 )
 option(
 	'http',
@@ -30,23 +31,52 @@ option(
 	description: 'Enable HTTP via libcurl'
 )
 option(
-	'gravfft',
-	type: 'boolean',
-	value: true,
-	description: 'Enable FFT gravity via libfftw3'
-)
-option(
 	'snapshot',
 	type: 'boolean',
 	value: false,
 	description: 'Snapshot build'
 )
 option(
-	'snapshot_id',
+	'display_version_major',
+	type: 'integer',
+	min: 0,
+	value: 98,
+	description: 'Major component of the display version, should more or less map to the MINOR version in semantic versioning'
+)
+option(
+	'display_version_minor',
 	type: 'integer',
 	min: 0,
 	value: 0,
-	description: 'Snapshot ID, only relevant if \'snapshot\' is true'
+	description: 'Minor component of the display version, should more or less map to the PATCH version in semantic versioning'
+)
+option(
+	'build_num',
+	type: 'integer',
+	min: 0,
+	value: 363,
+	description: 'Build number, should be strictly monotonously increasing across public releases'
+)
+option(
+	'upstream_version_major',
+	type: 'integer',
+	min: 0,
+	value: 98,
+	description: 'Major component of the upstream display version, mod owners should not change this but merge upstream changes to it'
+)
+option(
+	'upstream_version_minor',
+	type: 'integer',
+	min: 0,
+	value: 0,
+	description: 'Minor component of the upstream display version, mod owners should not change this but merge upstream changes to it'
+)
+option(
+	'upstream_build_num',
+	type: 'integer',
+	min: 0,
+	value: 363,
+	description: 'Upstream build number, mod owners should not change this but merge upstream changes to it'
 )
 option(
 	'mod_id',
@@ -103,7 +133,7 @@ option(
 	'update_server',
 	type: 'string',
 	value: '',
-	description: 'Update server, only used by snapshots and mods, see \'snapshot_id\' and \'mod_id\''
+	description: 'Update server, only used by snapshots and mods, see \'snapshot\' and \'mod_id\''
 )
 option(
 	'workaround_noncpp_lua',
@@ -208,6 +238,12 @@ option(
 	description: 'Enforce encrypted HTTP traffic, may be disabled for debugging'
 )
 option(
+	'secure_ciphers_only',
+	type: 'boolean',
+	value: false,
+	description: 'Use only secure ciphers for encrypted HTTP traffic, please review cipher list before enabling'
+)
+option(
 	'prepare',
 	type: 'boolean',
 	value: false,
@@ -218,4 +254,60 @@ option(
 	type: 'feature',
 	value: 'disabled',
 	description: 'Render icons with Inkscape (inkscape binary needs to be in PATH)'
+)
+option(
+	'resolve_vcs_tag',
+	type: 'combo',
+	choices: [ 'no', 'static_release_only', 'yes' ],
+	value: 'static_release_only',
+	description: 'Enable VCS tag resolution, introduces an always-stale custom target'
+)
+option(
+	'manifest_copyright',
+	type: 'string',
+	value: 'Copyright © 2008-2011 Stanislaw K Skowrenek, Copyright © 2011-2023 Simon Robertshaw, Copyright © 2016-2023 jacob1',
+	description: 'Copyright string, don\'t take too seriously, subject to change'
+)
+option(
+	'manifest_macos_min_ver',
+	type: 'string',
+	value: '',
+	description: 'MacOS minimum allowed platform version string, used by ghactions workflows, not useful otherwise'
+)
+option(
+	'manifest_date',
+	type: 'string',
+	value: '',
+	description: 'Build date string, used by ghactions workflows, not useful otherwise'
+)
+option(
+	'platform_clipboard',
+	type: 'boolean',
+	value: true,
+	description: 'Enable platform clipboard, allows copying simulation data between different windows'
+)
+option(
+	'use_bluescreen',
+	type: 'combo',
+	choices: [ 'no', 'yes', 'auto' ],
+	value: 'auto',
+	description: 'Show blue error screen upon unhandled signals and exceptions'
+)
+option(
+	'windows_icons',
+	type: 'boolean',
+	value: true,
+	description: 'Add icon resources to the executable on Windows'
+)
+option(
+	'windows_utf8cp',
+	type: 'boolean',
+	value: true,
+	description: 'Ask Windows nicely for UTF-8 as the codepage'
+)
+option(
+	'export_lua_symbols',
+	type: 'boolean',
+	value: false,
+	description: 'Export Lua symbols to enable loading of Lua shared modules'
 )
